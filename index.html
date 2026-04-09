@@ -20,53 +20,22 @@
         .seq-badge.current { opacity: 1; transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         .seq-arrow { color: #bdc3c7; font-size: 12px; }
         
-        .bg-t1 { background-color: #3182ce; } /* 민호/준하 */
-        .bg-t2 { background-color: #e53e3e; } /* 원배/경표 */
-        .bg-t3 { background-color: #38a169; } /* 경목/원언 */
+        .bg-t1 { background-color: #3182ce; }
+        .bg-t2 { background-color: #e53e3e; }
+        .bg-t3 { background-color: #38a169; }
 
         .container { display: flex; flex-direction: column; gap: 15px; max-width: 1400px; margin: 0 auto; transition: 0.5s; }
         
         .player-pool { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 12px; margin-top: 15px; }
         
-        /* 선수 카드 디자인 개선 (다이나믹 사이즈 적용) */
-        .player-card { 
-            padding: 12px 6px; 
-            background: #ffffff; /* 깔끔한 흰색 배경 */
-            border-radius: 12px; 
-            cursor: pointer; 
-            border: 2px solid transparent; 
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-            gap: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.04);
-            border: 1px solid #e2e8f0;
-        }
+        .player-card { padding: 12px 6px; background: #ffffff; border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; }
         .player-card:hover { background: #f8fafc; transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); border-color: #cbd5e0; }
         .player-card.disabled { opacity: 0.4; pointer-events: none; background: #e2e8f0; border-color: transparent; box-shadow: none; }
-        
         .player-name { font-weight: 800; font-size: 15px; color: #1a202c; }
 
-        /* 뱃지가 이름 밑에 차곡차곡 쌓임 */
-        .wish-badges-container { 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 4px; 
-            justify-content: center; 
-            width: 100%; 
-        }
-        .wish-badge { 
-            padding: 2px 6px; 
-            border-radius: 6px; 
-            font-size: 10px; 
-            color: white; 
-            font-weight: 800; 
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-            white-space: nowrap; 
-        }
+        .wish-badges-container { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; width: 100%; }
+        .wish-badge { padding: 2px 6px; border-radius: 6px; font-size: 10px; color: white; font-weight: 800; box-shadow: 0 1px 2px rgba(0,0,0,0.1); white-space: nowrap; }
         .wish-badge.super { border: 1px solid #ecc94b; color: #ecc94b; background-color: #1a202c !important; }
 
         .teams-container { display: flex; flex-direction: column; gap: 15px; }
@@ -197,7 +166,8 @@
             'wo': { id: 'wo', name: '원언', team: 3 }
         };
 
-        let state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {} };
+        // lockedHype 속성 추가 (영구 보존 점수)
+        let state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {}, lockedHype: {} };
         let myCoachData = null;
         let selectedPlayerForModal = null;
         let confettiFired = false;
@@ -209,8 +179,14 @@
                     currentPick: data.currentPick || 0,
                     rosters: data.rosters || { 1: [], 2: [], 3: [] },
                     drafted: data.drafted || [],
-                    coachWishes: data.coachWishes || {}
+                    coachWishes: data.coachWishes || {},
+                    lockedHype: data.lockedHype || {}
                 };
+                
+                // [안전장치 추가] Firebase가 빈 배열을 삭제하는 것을 방지
+                if (!state.rosters[1]) state.rosters[1] = [];
+                if (!state.rosters[2]) state.rosters[2] = [];
+                if (!state.rosters[3]) state.rosters[3] = [];
             }
             render();
         });
@@ -233,7 +209,7 @@
                 myCoachData = { id: 'test', name: '테스트', team: 'test' };
                 loginStatus.innerText = '🧪 테스트 모드';
                 btnReset.style.display = 'inline-block';
-                state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {} };
+                state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {}, lockedHype: {} };
             } else {
                 alert('유효하지 않은 암호입니다.');
                 myCoachData = null;
@@ -247,14 +223,20 @@
             regularPlayers.forEach(player => {
                 let score = 0;
                 const draftIndex = state.drafted.indexOf(player);
+                
                 if (draftIndex !== -1) {
+                    // 영입된 선수는 기본 점수 + 박제된 찜 점수(lockedHype) 반영
                     score += (24 - draftIndex) * 10;
+                    if (state.lockedHype && state.lockedHype[player]) {
+                        score += state.lockedHype[player];
+                    }
+                } else {
+                    // 아직 영입되지 않은 선수는 실시간 찜 점수 반영
+                    Object.values(state.coachWishes || {}).forEach(wishes => {
+                        if (wishes.normal && wishes.normal.includes(player)) score += 20;
+                        if (wishes.super === player) score += 100;
+                    });
                 }
-
-                Object.values(state.coachWishes || {}).forEach(wishes => {
-                    if (wishes.normal && wishes.normal.includes(player)) score += 20;
-                    if (wishes.super === player) score += 100;
-                });
 
                 if (score > 0) scores.push({ name: player, score: score });
             });
@@ -415,6 +397,15 @@
             const currentTeamTurn = snakeDraftOrder[state.currentPick];
             const team = myCoachData.id === 'test' ? currentTeamTurn : myCoachData.team;
             
+            // [추가된 로직] 영입 시점의 찜 점수 계산하여 lockedHype에 영구 보존
+            if (!state.lockedHype) state.lockedHype = {};
+            let hypePoints = 0;
+            Object.values(state.coachWishes || {}).forEach(w => {
+                if (w.super === selectedPlayerForModal) hypePoints += 100;
+                if (w.normal && w.normal.includes(selectedPlayerForModal)) hypePoints += 20;
+            });
+            state.lockedHype[selectedPlayerForModal] = hypePoints;
+
             state.rosters[team].push(selectedPlayerForModal);
             state.drafted.push(selectedPlayerForModal);
             
@@ -468,11 +459,12 @@
 
         function resetDraft() {
             if (confirm("모든 데이터를 초기화하시겠습니까?")) {
+                const resetData = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {}, lockedHype: {} };
                 if (myCoachData && myCoachData.id === 'test') {
-                    state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {} };
+                    state = resetData;
                     render();
                 } else {
-                    db.ref('draftState').set({ currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {} });
+                    db.ref('draftState').set(resetData);
                 }
             }
         }
