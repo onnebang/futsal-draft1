@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 상반기 풋살 내부매치 드래프트</title>
+    <title>2026 상반기 풉살 내부매치 드래프트</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { font-family: 'Pretendard', sans-serif; background-color: #f0f4f8; color: #333; margin: 0; padding: 15px; }
         .header { text-align: center; margin-bottom: 15px; }
         h1 { font-size: 24px; color: #1a365d; margin-bottom: 5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
@@ -20,60 +21,46 @@
         .seq-badge.current { opacity: 1; transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         .seq-arrow { color: #bdc3c7; font-size: 12px; }
         
-        .bg-t1 { background-color: #e53e3e; } .bg-t2 { background-color: #3182ce; } .bg-t3 { background-color: #38a169; }
+        .bg-t1 { background-color: #3182ce; } /* 민호/준하 */
+        .bg-t2 { background-color: #e53e3e; } /* 원배/경표 */
+        .bg-t3 { background-color: #38a169; } /* 경목/원언 */
 
         .container { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; margin: 0 auto; transition: 0.5s; }
-        
         .player-pool { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .pool-scroll-area { max-height: 350px; overflow-y: auto; padding-right: 5px; }
         .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 10px; margin-top: 10px; }
-        .player-card { padding: 10px 5px; background: #edf2f7; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 15px; text-align: center; transition: 0.2s; position: relative; border: 2px solid transparent; }
-        .player-card:hover { background: #e2e8f0; transform: translateY(-3px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .player-card { padding: 10px 5px; background: #edf2f7; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 15px; text-align: center; position: relative; border: 2px solid transparent; transition: 0.2s; }
+        .player-card:hover { background: #e2e8f0; transform: translateY(-3px); }
         .player-card.disabled { opacity: 0.3; pointer-events: none; background: #a0aec0; color: white; }
-        
-        /* 찜하기 뱃지 */
         .wish-badge { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 5; }
 
         .teams-container { display: flex; flex-direction: column; gap: 15px; width: 100%; }
-        .team-box { background: white; padding: 20px; border-radius: 15px; border-top: 6px solid #ccc; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); transition: 0.3s; flex: 1; }
-        .team-1 { border-color: #e53e3e; } .team-2 { border-color: #3182ce; } .team-3 { border-color: #38a169; }
+        .team-box { background: white; padding: 20px; border-radius: 15px; border-top: 6px solid #ccc; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); flex: 1; }
+        .team-1 { border-color: #3182ce; } .team-2 { border-color: #e53e3e; } .team-3 { border-color: #38a169; }
         .roster { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; min-height: 40px; }
-        .roster-slot { padding: 8px 14px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 14px; transition: 0.3s; }
-        .roster-slot.filled { background: #2d3748; color: white; border-color: #2d3748; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .special-player { background: #ecc94b !important; color: #744210 !important; border-color: #ecc94b !important; }
+        .roster-slot { padding: 8px 14px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 14px; font-weight: 600; }
+        .roster-slot.filled { background: #2d3748; color: white; border-color: #2d3748; }
+        .special-player { background: #ecc94b !important; color: #744210 !important; }
 
-        /* 로그인 패널 */
         .auth-panel { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-bottom: 15px; padding: 15px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        input[type="text"] { padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 14px; width: 160px; outline: none; }
-        input[type="text"]:focus { border-color: #4a5568; }
-        button.btn-login { padding: 10px 15px; border: none; border-radius: 8px; background: #2b6cb0; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        button.btn-login:hover { background: #2c5282; }
+        input[type="text"] { padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 14px; width: 160px; }
+        button.btn-login { padding: 10px 15px; border: none; border-radius: 8px; background: #2b6cb0; color: white; cursor: pointer; font-weight: bold; }
         .btn-reset { background: #718096; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
-        .btn-reset:hover { background: #4a5568; }
 
-        /* 커스텀 모달 (팝업창) */
+        /* 모달 스타일 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); }
-        .modal-content { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        .modal-title { font-size: 22px; font-weight: 800; color: #1a202c; margin-bottom: 10px; }
-        .modal-desc { font-size: 15px; color: #4a5568; margin-bottom: 25px; line-height: 1.5; }
-        .modal-buttons { display: flex; gap: 10px; justify-content: center; }
-        .btn-draft { background: #e53e3e; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; flex: 1; transition: 0.2s; }
-        .btn-draft:hover { background: #c53030; }
-        .btn-wish { background: #ecc94b; color: #744210; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; flex: 1; transition: 0.2s; }
-        .btn-wish:hover { background: #d69e2e; }
+        .modal-content { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 90%; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .btn-draft { background: #e53e3e; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; flex: 1; }
+        .btn-wish { background: #ecc94b; color: #744210; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; flex: 1; }
         .btn-cancel { background: #e2e8f0; color: #4a5568; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; flex: 1; }
 
-        /* 결과 화면용 클래스 */
         .final-view .teams-container { flex-direction: row; flex-wrap: wrap; }
-        .final-view .team-box { border-top: none; border-left: 8px solid; text-align: center; }
+        .final-view .team-box { text-align: center; }
         .final-view .roster { justify-content: center; }
-        .final-view .roster-slot { font-size: 16px; padding: 10px 18px; }
 
         @media (min-width: 768px) {
             .container { flex-direction: row; }
             .player-pool { flex: 1; }
-            .pool-scroll-area { max-height: none; overflow-y: visible; }
             .teams-container { flex: 1.5; }
             .final-view .container { flex-direction: column; }
         }
@@ -81,38 +68,35 @@
 </head>
 <body>
 
-    <div class="header" id="headerSection">
+    <div class="header">
         <h1>🏆 2026 상반기 풉살 내부매치 드래프트</h1>
-        <div class="auth-panel" id="authPanel">
-            <input type="text" id="authCode" placeholder="코치진 로그인 코드" autocomplete="off">
+        <div class="auth-panel">
+            <input type="text" id="authCode" placeholder="코치별 전술 암호 입력" autocomplete="off">
             <button class="btn-login" onclick="login()">접속</button>
-            <button class="btn-reset" id="btnReset" onclick="resetDraft()">초기화 (Admin)</button>
-            <span id="loginStatus" style="font-weight: bold; color: #718096; margin-left: 10px;">관전 모드 (선수용)</span>
+            <button class="btn-reset" id="btnReset" onclick="resetDraft()">초기화 (Master)</button>
+            <span id="loginStatus" style="font-weight: bold; color: #718096; margin-left: 10px;">관전 모드</span>
         </div>
-        
-        <div class="turn-indicator" id="turnIndicator">로딩 중...</div>
+        <div class="turn-indicator" id="turnIndicator">데이터 불러오는 중...</div>
         <div class="sequence-container" id="sequenceContainer"></div>
     </div>
 
     <div class="container" id="mainContainer">
         <div class="player-pool" id="poolSection">
-            <h3 style="margin-top: 0; color: #2d3748;">대기 선수 명단 <span style="font-size: 13px; color: #718096; font-weight: normal;">(가나다 순)</span></h3>
-            <div class="pool-scroll-area">
-                <div class="pool-grid" id="poolGrid"></div>
-            </div>
+            <h3 style="margin-top: 0;">대기 선수 명단 <span style="font-size: 12px; color: #718096;">(가나다순)</span></h3>
+            <div class="pool-grid" id="poolGrid"></div>
         </div>
 
         <div class="teams-container" id="teamsContainer">
             <div class="team-box team-1">
-                <h3 style="margin: 0; color: #e53e3e;">Team 1 (경목 & 원언)</h3>
+                <h3 style="margin: 0; color: #3182ce;">Team 1 (민호 & 준하)</h3>
                 <div class="roster" id="roster-1"></div>
             </div>
             <div class="team-box team-2">
-                <h3 style="margin: 0; color: #3182ce;">Team 2 (민호 & 준하)</h3>
+                <h3 style="margin: 0; color: #e53e3e;">Team 2 (원배 & 경표)</h3>
                 <div class="roster" id="roster-2"></div>
             </div>
             <div class="team-box team-3">
-                <h3 style="margin: 0; color: #38a169;">Team 3 (원배 & 경표)</h3>
+                <h3 style="margin: 0; color: #38a169;">Team 3 (경목 & 원언)</h3>
                 <div class="roster" id="roster-3"></div>
             </div>
         </div>
@@ -120,9 +104,9 @@
 
     <div class="modal-overlay" id="customModal">
         <div class="modal-content">
-            <div class="modal-title" id="modalTitle">선수 선택</div>
-            <div class="modal-desc" id="modalDesc"></div>
-            <div class="modal-buttons" id="modalButtons">
+            <div class="modal-title" id="modalTitle" style="font-size: 22px; font-weight: 800; margin-bottom: 10px;"></div>
+            <div class="modal-desc" id="modalDesc" style="font-size: 15px; color: #4a5568; margin-bottom: 20px;"></div>
+            <div class="modal-buttons">
                 <button class="btn-draft" id="btnConfirmDraft">영입 확정</button>
                 <button class="btn-wish" id="btnToggleWish">👀 찜하기</button>
                 <button class="btn-cancel" onclick="closeModal()">닫기</button>
@@ -131,10 +115,7 @@
     </div>
 
     <script>
-        // ==========================================
-        // [중요] 발급받으신 파이어베이스 설정값으로 교체하세요!
-        // ==========================================
-        const firebaseConfig = {
+         const firebaseConfig = {
             apiKey: "AIzaSyBPwaBOuMDxIF7j3puG-bOtMjnhWPcS_rQ",
             authDomain: "futsaldraft-feb5c.firebaseapp.com",
             databaseURL: "https://futsaldraft-feb5c-default-rtdb.firebaseio.com",
@@ -143,13 +124,11 @@
             messagingSenderId: "783742987198",
             appId: "1:783742987198:web:88ca8d86018bd741b527ef",
             measurementId: "G-L9PB1DDQDD",
-        };
-        // ==========================================
+          };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 성을 뺀 이름만 적용
         const regularPlayers = [
             '경은', '나영', '선민', '시현', '주원', '해수', '영은', '하림', '승민', '효린', 
             '호원', '은재', '지혜', '인선', '은영', '서윤', '민지', '혜은', '혜린', '가은', 
@@ -157,38 +136,32 @@
         ].sort();
 
         const specialPlayers = ['송희', '이지', '재인'];
+        const snakeDraftOrder = [1, 2, 3, 3, 2, 1, 1, 2, 3, 3, 2, 1, 1, 2, 3, 3, 2, 1, 1, 2, 3, 3, 2, 1];
 
-        const snakeDraftOrder = [
-            1, 2, 3, 3, 2, 1, 1, 2, 3, 3, 2, 1, 
-            1, 2, 3, 3, 2, 1, 1, 2, 3, 3, 2, 1
-        ];
+        // 코치별 개인 코드 및 팀 매핑
+        const coachAuth = {
+            'mh': { name: '민호 코치', team: 1 },
+            'jh': { name: '준하 코치', team: 1 },
+            'wb': { name: '원배 코치', team: 2 },
+            'kp': { name: '경표 코치', team: 2 },
+            'gm': { name: '경목 코치', team: 3 },
+            'wo': { name: '원언 코치', team: 3 }
+        };
 
-        function getInitialState() {
-            return {
-                currentPick: 0,
-                rosters: { 1: [], 2: [], 3: [] },
-                drafted: [],
-                wishlist: {} // {'경은': 1, '나영': 2} 형태
-            };
-        }
-
-        let state = getInitialState();
-        let myTeamId = null;
-        let isTestMode = false;
+        let state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], wishlist: {} };
+        let myCoachData = null;
         let selectedPlayerForModal = null;
         let confettiFired = false;
 
         db.ref('draftState').on('value', (snapshot) => {
-            if (isTestMode) return; 
             const data = snapshot.val();
             if (data) {
-                state.currentPick = data.currentPick || 0;
-                state.rosters = data.rosters || { 1: [], 2: [], 3: [] };
-                state.drafted = data.drafted || [];
-                state.wishlist = data.wishlist || {};
-                if (!state.rosters[1]) state.rosters[1] = [];
-                if (!state.rosters[2]) state.rosters[2] = [];
-                if (!state.rosters[3]) state.rosters[3] = [];
+                state = {
+                    currentPick: data.currentPick || 0,
+                    rosters: data.rosters || { 1: [], 2: [], 3: [] },
+                    drafted: data.drafted || [],
+                    wishlist: data.wishlist || {}
+                };
             }
             render();
         });
@@ -198,15 +171,20 @@
             const loginStatus = document.getElementById('loginStatus');
             const btnReset = document.getElementById('btnReset');
             
-            isTestMode = false; 
-            btnReset.style.display = 'none';
-
-            if (code === 'tikitaka') { myTeamId = 1; loginStatus.innerText = 'Team 1 (경목/원언) 접속됨'; loginStatus.style.color = '#e53e3e'; }
-            else if (code === 'catenaccio') { myTeamId = 2; loginStatus.innerText = 'Team 2 (민호/준하) 접속됨'; loginStatus.style.color = '#3182ce'; }
-            else if (code === 'gegenpress') { myTeamId = 3; loginStatus.innerText = 'Team 3 (원배/경표) 접속됨'; loginStatus.style.color = '#38a169'; }
-            else if (code === 'admin999') { myTeamId = 'admin'; loginStatus.innerText = '🛠️ 관리자 권한 접속됨'; loginStatus.style.color = '#d69e2e'; btnReset.style.display = 'inline-block'; }
-            else if (code === 'test') { isTestMode = true; myTeamId = 'test'; loginStatus.innerText = '🧪 테스트 모드'; loginStatus.style.color = '#805ad5'; state = getInitialState(); btnReset.style.display = 'inline-block'; }
-            else { alert('코드가 틀렸습니다.'); myTeamId = null; loginStatus.innerText = '관전 모드 (선수용)'; loginStatus.style.color = '#718096'; }
+            if (coachAuth[code]) {
+                myCoachData = coachAuth[code];
+                loginStatus.innerText = `${myCoachData.name} 접속됨`;
+                loginStatus.style.color = myCoachData.team === 1 ? '#3182ce' : myCoachData.team === 2 ? '#e53e3e' : '#38a169';
+                btnReset.style.display = 'none';
+            } else if (code === 'master-futsal') {
+                myCoachData = { name: '마스터', team: 'admin' };
+                loginStatus.innerText = '🛠️ 마스터 관리자 접속';
+                btnReset.style.display = 'inline-block';
+            } else {
+                alert('유효하지 않은 전술 암호입니다.');
+                myCoachData = null;
+                loginStatus.innerText = '관전 모드';
+            }
             render();
         }
 
@@ -217,45 +195,34 @@
             const seqContainer = document.getElementById('sequenceContainer');
             const poolSection = document.getElementById('poolSection');
             const mainContainer = document.getElementById('mainContainer');
-            
-            // 1. 드래프트 완료 시 뷰 (가장 중요)
+
             if (isFinished) {
-                indicator.innerText = "✨ 2026 상반기 풉살 내부매치 라인업 확정 ✨";
+                indicator.innerText = "✨ 드래프트 완료! 최종 라인업이 확정되었습니다 ✨";
                 indicator.style.background = "#ecc94b"; indicator.style.color = "#744210";
                 seqContainer.style.display = "none";
-                poolSection.style.display = "none"; // 선수 명단 숨김
+                poolSection.style.display = "none";
                 mainContainer.classList.add('final-view');
-                
-                // 폭죽 이펙트 (한 번만 실행)
-                if (!confettiFired) {
-                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-                    confettiFired = true;
-                }
+                if (!confettiFired) { confetti({ particleCount: 150, spread: 80 }); confettiFired = true; }
             } else {
-                // 진행 중 뷰
-                confettiFired = false;
-                seqContainer.style.display = "flex";
-                poolSection.style.display = "block";
-                mainContainer.classList.remove('final-view');
-
                 indicator.innerText = `현재 턴: Team ${currentTeamTurn} (${state.currentPick + 1}픽)`;
-                if (isTestMode) { indicator.style.background = "#805ad5"; } 
-                else if (myTeamId === currentTeamTurn) { indicator.innerText += " - 👈 우리 팀 차례입니다!"; indicator.style.background = "#e53e3e"; } 
-                else { indicator.style.background = "#2c3e50"; }
+                if (myCoachData && myCoachData.team === currentTeamTurn) {
+                    indicator.innerText += " - 👈 우리 팀 차례!";
+                    indicator.style.background = "#e53e3e";
+                } else {
+                    indicator.style.background = "#2c3e50";
+                }
 
-                let seqHtml = '<span class="sequence-label">👉 진행 순서: </span>';
+                let seqHtml = '<span class="sequence-label">👉 순서: </span>';
                 const endIdx = Math.min(24, state.currentPick + 6);
                 for(let i = state.currentPick; i < endIdx; i++) {
                     const teamNum = snakeDraftOrder[i];
                     const isCurrent = (i === state.currentPick);
-                    const badgeClass = isCurrent ? `seq-badge bg-t${teamNum} current` : `seq-badge bg-t${teamNum}`;
-                    seqHtml += `<div class="${badgeClass}">T${teamNum}</div>`;
+                    seqHtml += `<div class="seq-badge bg-t${teamNum} ${isCurrent ? 'current' : ''}">T${teamNum}</div>`;
                     if (i < endIdx - 1) seqHtml += `<span class="seq-arrow">▶</span>`;
                 }
                 seqContainer.innerHTML = seqHtml;
             }
 
-            // 2. 대기 선수 명단 랜더링 (찜하기 뱃지 포함)
             const poolGrid = document.getElementById('poolGrid');
             poolGrid.innerHTML = '';
             regularPlayers.forEach(player => {
@@ -263,100 +230,61 @@
                 const el = document.createElement('div');
                 el.className = `player-card ${isDrafted ? 'disabled' : ''}`;
                 el.innerText = player;
-                
-                // 코치진에게만 찜하기 뱃지 표시
-                if (!isDrafted && state.wishlist[player] && myTeamId !== null && myTeamId !== 'admin') {
+                if (!isDrafted && state.wishlist[player] && myCoachData) {
                     const wishTeam = state.wishlist[player];
                     el.innerHTML += `<div class="wish-badge bg-t${wishTeam}">T${wishTeam}</div>`;
-                    el.style.borderColor = wishTeam === 1 ? '#e53e3e' : wishTeam === 2 ? '#3182ce' : '#38a169';
+                    el.style.borderColor = wishTeam === 1 ? '#3182ce' : wishTeam === 2 ? '#e53e3e' : '#38a169';
                 }
-
                 if (!isDrafted) el.onclick = () => openModal(player);
                 poolGrid.appendChild(el);
             });
 
-            // 3. 팀 로스터 랜더링 (종료 시 가나다 순 자동 정렬)
             for (let i = 1; i <= 3; i++) {
                 const rosterEl = document.getElementById(`roster-${i}`);
                 rosterEl.innerHTML = '';
-                
-                // 종료 시 배열 복사 후 정렬, 진행 중엔 그대로
                 let displayRoster = isFinished ? [...state.rosters[i]].sort() : state.rosters[i];
-                
                 displayRoster.forEach(player => {
-                    if(!specialPlayers.includes(player)) {
-                        rosterEl.innerHTML += `<div class="roster-slot filled">${player}</div>`;
-                    }
+                    rosterEl.innerHTML += `<div class="roster-slot filled ${specialPlayers.includes(player) ? 'special-player' : ''}">${player}</div>`;
                 });
-                
-                const emptySlots = 8 - state.rosters[i].filter(p => !specialPlayers.includes(p)).length;
-                for(let j=0; j<emptySlots; j++) rosterEl.innerHTML += `<div class="roster-slot">빈 자리</div>`;
-
-                displayRoster.forEach(player => {
-                    if(specialPlayers.includes(player)) {
-                        rosterEl.innerHTML += `<div class="roster-slot filled special-player">🌟 ${player}</div>`;
-                    }
-                });
+                const emptyCount = 8 - state.rosters[i].filter(p => !specialPlayers.includes(p)).length;
+                for(let j=0; j<emptyCount; j++) rosterEl.innerHTML += `<div class="roster-slot">빈 자리</div>`;
             }
         }
 
-        // --- 커스텀 팝업창 로직 ---
         function openModal(playerName) {
             if (state.currentPick >= 24) return;
-            const currentTeamTurn = snakeDraftOrder[state.currentPick];
             selectedPlayerForModal = playerName;
-            
+            const currentTeamTurn = snakeDraftOrder[state.currentPick];
             const modal = document.getElementById('customModal');
-            const title = document.getElementById('modalTitle');
             const desc = document.getElementById('modalDesc');
-            const btnDraft = document.getElementById('btnConfirmDraft');
-            const btnWish = document.getElementById('btnToggleWish');
-
-            title.innerText = `${playerName} 선수`;
+            document.getElementById('modalTitle').innerText = `${playerName} 선수`;
             modal.style.display = 'flex';
 
-            // 권한 체크에 따른 버튼 활성화/비활성화
-            if (myTeamId === null || myTeamId === 'admin') {
-                desc.innerText = "관전 모드에서는 영입이나 찜하기를 할 수 없습니다. 코치 코드로 로그인해주세요.";
-                btnDraft.style.display = 'none'; btnWish.style.display = 'none';
+            if (!myCoachData || myCoachData.team === 'admin') {
+                desc.innerText = "코치 로그인 시 영입이 가능합니다.";
+                document.getElementById('btnConfirmDraft').style.display = 'none';
+                document.getElementById('btnToggleWish').style.display = 'none';
             } else {
-                btnWish.style.display = 'block';
-                // 찜하기 버튼 상태 토글
-                if (state.wishlist[playerName] === myTeamId) {
-                    btnWish.innerText = "찜하기 취소";
-                    btnWish.style.background = "#e2e8f0"; btnWish.style.color = "#4a5568";
+                document.getElementById('btnToggleWish').style.display = 'block';
+                document.getElementById('btnToggleWish').innerText = state.wishlist[playerName] === myCoachData.team ? "찜 취소" : "👀 찜하기";
+                if (myCoachData.team === currentTeamTurn) {
+                    desc.innerText = `현재 우리 팀 차례입니다. ${playerName} 선수를 영입하시겠습니까?`;
+                    document.getElementById('btnConfirmDraft').style.display = 'block';
                 } else {
-                    btnWish.innerText = "👀 찜하기";
-                    btnWish.style.background = "#ecc94b"; btnWish.style.color = "#744210";
-                }
-
-                if (!isTestMode && myTeamId !== currentTeamTurn) {
-                    desc.innerText = `현재는 Team ${currentTeamTurn}의 턴입니다.\n이 선수를 위시리스트에 담아둘까요?`;
-                    btnDraft.style.display = 'none';
-                } else {
-                    const pickingTeam = isTestMode ? currentTeamTurn : myTeamId;
-                    desc.innerText = `Team ${pickingTeam}에 영입하시겠습니까?`;
-                    btnDraft.style.display = 'block';
+                    desc.innerText = "지금은 다른 팀의 턴입니다. 이 선수를 찜해둘까요?";
+                    document.getElementById('btnConfirmDraft').style.display = 'none';
                 }
             }
         }
 
-        function closeModal() {
-            document.getElementById('customModal').style.display = 'none';
-            selectedPlayerForModal = null;
-        }
+        function closeModal() { document.getElementById('customModal').style.display = 'none'; }
 
-        // 영입 확정 버튼 클릭
         document.getElementById('btnConfirmDraft').onclick = function() {
-            if(!selectedPlayerForModal) return;
-            const currentTeamTurn = snakeDraftOrder[state.currentPick];
-            const pickingTeam = isTestMode ? currentTeamTurn : myTeamId;
-            
-            state.rosters[pickingTeam].push(selectedPlayerForModal);
+            if (!myCoachData || !selectedPlayerForModal) return;
+            const team = myCoachData.team;
+            state.rosters[team].push(selectedPlayerForModal);
             state.drafted.push(selectedPlayerForModal);
-            // 영입된 선수는 위시리스트에서 제거
-            if(state.wishlist[selectedPlayerForModal]) delete state.wishlist[selectedPlayerForModal];
-            
+            delete state.wishlist[selectedPlayerForModal];
             state.currentPick++;
 
             if (state.currentPick === 24) {
@@ -364,33 +292,23 @@
                 state.rosters[1].push(shuffled[0]);
                 state.rosters[2].push(shuffled[1]);
                 state.rosters[3].push(shuffled[2]);
-                alert('드래프트가 종료되어 특수 멤버가 자동 배치되었습니다!');
             }
-
+            db.ref('draftState').set(state);
             closeModal();
-            if (isTestMode) render();
-            else db.ref('draftState').set(state);
         };
 
-        // 찜하기 버튼 클릭
         document.getElementById('btnToggleWish').onclick = function() {
-            if(!selectedPlayerForModal || myTeamId === 'test') return;
-            
-            if (state.wishlist[selectedPlayerForModal] === myTeamId) {
-                delete state.wishlist[selectedPlayerForModal]; // 찜 취소
-            } else {
-                state.wishlist[selectedPlayerForModal] = myTeamId; // 찜하기
-            }
-            
-            closeModal();
+            if (!myCoachData || !selectedPlayerForModal) return;
+            const team = myCoachData.team;
+            if (state.wishlist[selectedPlayerForModal] === team) delete state.wishlist[selectedPlayerForModal];
+            else state.wishlist[selectedPlayerForModal] = team;
             db.ref('draftState').set(state);
+            closeModal();
         };
 
         function resetDraft() {
-            if (confirm("정말 드래프트를 초기화하시겠습니까? (이 작업은 되돌릴 수 없습니다)")) {
-                state = getInitialState();
-                if (isTestMode) { alert("테스트 데이터가 초기화되었습니다."); render(); } 
-                else { db.ref('draftState').set(state).then(() => alert("서버 데이터가 초기화되었습니다.")); }
+            if (confirm("모든 데이터를 초기화하시겠습니까?")) {
+                db.ref('draftState').set({ currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], wishlist: {} });
             }
         }
     </script>
