@@ -24,18 +24,43 @@
         .bg-t2 { background-color: #e53e3e; } /* 원배/경표 */
         .bg-t3 { background-color: #38a169; } /* 경목/원언 */
 
-        /* 3단 레이아웃을 위한 Grid/Flex 설정 */
         .container { display: flex; flex-direction: column; gap: 15px; max-width: 1400px; margin: 0 auto; transition: 0.5s; }
         
-        .player-pool { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px; margin-top: 10px; }
-        .player-card { padding: 12px 5px; background: #edf2f7; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 15px; text-align: center; position: relative; border: 2px solid transparent; transition: 0.2s; }
-        .player-card:hover { background: #e2e8f0; transform: translateY(-3px); }
-        .player-card.disabled { opacity: 0.3; pointer-events: none; background: #a0aec0; color: white; }
+        .player-pool { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         
-        /* 코치별 개별 뱃지 컨테이너 */
-        .wish-badges-container { position: absolute; top: -10px; right: -5px; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; z-index: 5; pointer-events: none; }
-        .wish-badge { padding: 2px 5px; border-radius: 6px; font-size: 10px; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); white-space: nowrap; }
+        /* 선수 명단 레이아웃 대폭 상향 */
+        .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 15px; margin-top: 15px; }
+        
+        .player-card { 
+            padding: 15px 5px 10px 5px; 
+            background: #edf2f7; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            border: 2px solid transparent; 
+            transition: 0.2s; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: flex-start;
+            min-height: 90px; /* 카드를 넓고 길게 만듦 */
+            gap: 8px;
+        }
+        .player-card:hover { background: #e2e8f0; transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .player-card.disabled { opacity: 0.3; pointer-events: none; background: #a0aec0; }
+        
+        .player-name { font-weight: 800; font-size: 16px; color: #2d3748; }
+
+        /* 뱃지가 카드 내부에서 차곡차곡 쌓이도록 변경 */
+        .wish-badges-container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 4px; 
+            justify-content: center; 
+            width: 100%; 
+            padding: 0 5px; 
+            box-sizing: border-box; 
+        }
+        .wish-badge { padding: 3px 6px; border-radius: 8px; font-size: 11px; color: white; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.15); white-space: nowrap; }
         .wish-badge.super { border: 1px solid #ecc94b; color: #ecc94b; background-color: #2d3748 !important; }
 
         .teams-container { display: flex; flex-direction: column; gap: 15px; }
@@ -55,7 +80,7 @@
         .rank-score { font-size: 12px; color: #a0aec0; font-weight: bold; }
 
         .auth-panel { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-bottom: 15px; padding: 15px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        input[type="text"] { padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 14px; width: 160px; }
+        input[type="text"] { padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 14px; width: 160px; outline: none; }
         button.btn-login { padding: 10px 15px; border: none; border-radius: 8px; background: #2b6cb0; color: white; cursor: pointer; font-weight: bold; }
         .btn-reset { background: #718096; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
 
@@ -167,297 +192,3 @@
             'gm': { id: 'gm', name: '경목', team: 3 },
             'wo': { id: 'wo', name: '원언', team: 3 }
         };
-
-        // 데이터 구조: coachWishes: { 'wb': { normal: ['나영', '가은'], super: '은재' } }
-        let state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {} };
-        let myCoachData = null;
-        let selectedPlayerForModal = null;
-        let confettiFired = false;
-
-        db.ref('draftState').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                state = {
-                    currentPick: data.currentPick || 0,
-                    rosters: data.rosters || { 1: [], 2: [], 3: [] },
-                    drafted: data.drafted || [],
-                    coachWishes: data.coachWishes || {}
-                };
-            }
-            render();
-        });
-
-        function login() {
-            const code = document.getElementById('authCode').value.trim();
-            const loginStatus = document.getElementById('loginStatus');
-            const btnReset = document.getElementById('btnReset');
-            
-            if (coachAuth[code]) {
-                myCoachData = coachAuth[code];
-                loginStatus.innerText = `${myCoachData.name} 코치 접속`;
-                loginStatus.style.color = myCoachData.team === 1 ? '#3182ce' : myCoachData.team === 2 ? '#e53e3e' : '#38a169';
-                btnReset.style.display = 'none';
-            } else if (code === 'master-futsal') {
-                myCoachData = { id: 'admin', name: '마스터', team: 'admin' };
-                loginStatus.innerText = '🛠️ 마스터 접속';
-                btnReset.style.display = 'inline-block';
-            } else if (code === 'test') {
-                myCoachData = { id: 'test', name: '테스트', team: 'test' };
-                loginStatus.innerText = '🧪 테스트 모드';
-                btnReset.style.display = 'inline-block';
-                state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {} };
-            } else {
-                alert('유효하지 않은 암호입니다.');
-                myCoachData = null;
-                loginStatus.innerText = '관전 모드';
-            }
-            render();
-        }
-
-        // Hype Score 계산 알고리즘
-        function calculateRankings() {
-            let scores = [];
-            regularPlayers.forEach(player => {
-                let score = 0;
-                
-                // 1. 드래프트 지명 점수 (1픽 240점 ~ 24픽 10점)
-                const draftIndex = state.drafted.indexOf(player);
-                if (draftIndex !== -1) {
-                    score += (24 - draftIndex) * 10;
-                }
-
-                // 2. 코치 찜 점수 (일반 20점, 원픽 100점)
-                Object.values(state.coachWishes || {}).forEach(wishes => {
-                    if (wishes.normal && wishes.normal.includes(player)) score += 20;
-                    if (wishes.super === player) score += 100;
-                });
-
-                if (score > 0) scores.push({ name: player, score: score });
-            });
-
-            // 내림차순 정렬 후 Top 10 반환
-            return scores.sort((a, b) => b.score - a.score).slice(0, 10);
-        }
-
-        function render() {
-            const isFinished = state.currentPick >= 24;
-            const currentTeamTurn = snakeDraftOrder[state.currentPick];
-            const indicator = document.getElementById('turnIndicator');
-            const seqContainer = document.getElementById('sequenceContainer');
-            const poolSection = document.getElementById('poolSection');
-            const rankingSection = document.getElementById('rankingSection');
-            const mainContainer = document.getElementById('mainContainer');
-
-            // --- 랭킹 업데이트 ---
-            const rankingList = document.getElementById('rankingList');
-            rankingList.innerHTML = '';
-            const rankings = calculateRankings();
-            if (rankings.length === 0) {
-                rankingList.innerHTML = '<div style="color:#a0aec0; text-align:center; padding: 20px 0; font-size:13px;">아직 데이터가 없습니다.</div>';
-            } else {
-                rankings.forEach((r, idx) => {
-                    rankingList.innerHTML += `
-                        <div class="rank-item">
-                            <div class="rank-num">${idx + 1}</div>
-                            <div class="rank-name">${r.name}</div>
-                            <div class="rank-score">${r.score} 🔥</div>
-                        </div>
-                    `;
-                });
-            }
-
-            if (isFinished) {
-                indicator.innerText = "✨ 드래프트 완료! 최종 라인업이 확정되었습니다 ✨";
-                indicator.style.background = "#ecc94b"; indicator.style.color = "#744210";
-                seqContainer.style.display = "none";
-                poolSection.style.display = "none";
-                rankingSection.style.display = "none";
-                mainContainer.classList.add('final-view');
-                if (!confettiFired) { confetti({ particleCount: 150, spread: 80 }); confettiFired = true; }
-            } else {
-                indicator.innerText = `현재 턴: Team ${currentTeamTurn} (${state.currentPick + 1}픽)`;
-                if (myCoachData && myCoachData.team === currentTeamTurn) {
-                    indicator.innerText += " - 👈 우리 팀 차례!"; indicator.style.background = "#e53e3e";
-                } else if (myCoachData && myCoachData.team === 'test') {
-                    indicator.style.background = "#805ad5";
-                } else {
-                    indicator.style.background = "#2c3e50";
-                }
-
-                let seqHtml = '<span class="sequence-label">👉 순서: </span>';
-                const endIdx = Math.min(24, state.currentPick + 6);
-                for(let i = state.currentPick; i < endIdx; i++) {
-                    const teamNum = snakeDraftOrder[i];
-                    seqHtml += `<div class="seq-badge bg-t${teamNum} ${i === state.currentPick ? 'current' : ''}">T${teamNum}</div>`;
-                    if (i < endIdx - 1) seqHtml += `<span class="seq-arrow">▶</span>`;
-                }
-                seqContainer.innerHTML = seqHtml;
-            }
-
-            const poolGrid = document.getElementById('poolGrid');
-            poolGrid.innerHTML = '';
-            regularPlayers.forEach(player => {
-                const isDrafted = state.drafted.includes(player);
-                const el = document.createElement('div');
-                el.className = `player-card ${isDrafted ? 'disabled' : ''}`;
-                el.innerText = player;
-                
-                // 개별 코치 뱃지 렌더링
-                if (!isDrafted && myCoachData && myCoachData.id !== 'admin') {
-                    let badgesHtml = '<div class="wish-badges-container">';
-                    Object.entries(state.coachWishes || {}).forEach(([cId, wishes]) => {
-                        const coachInfo = Object.values(coachAuth).find(c => c.id === cId);
-                        if (!coachInfo) return;
-                        
-                        if (wishes.super === player) {
-                            badgesHtml += `<div class="wish-badge super">🔥${coachInfo.name}</div>`;
-                        } else if (wishes.normal && wishes.normal.includes(player)) {
-                            badgesHtml += `<div class="wish-badge bg-t${coachInfo.team}">${coachInfo.name}</div>`;
-                        }
-                    });
-                    badgesHtml += '</div>';
-                    el.innerHTML += badgesHtml;
-                }
-
-                if (!isDrafted) el.onclick = () => openModal(player);
-                poolGrid.appendChild(el);
-            });
-
-            for (let i = 1; i <= 3; i++) {
-                const rosterEl = document.getElementById(`roster-${i}`);
-                rosterEl.innerHTML = '';
-                let displayRoster = isFinished ? [...state.rosters[i]].sort() : state.rosters[i];
-                displayRoster.forEach(player => {
-                    rosterEl.innerHTML += `<div class="roster-slot filled">${player}</div>`;
-                });
-                const emptyCount = 8 - state.rosters[i].filter(p => !specialPlayers.includes(p)).length;
-                for(let j=0; j<emptyCount; j++) rosterEl.innerHTML += `<div class="roster-slot">빈 자리</div>`;
-            }
-        }
-
-        function openModal(playerName) {
-            if (state.currentPick >= 24) return;
-            selectedPlayerForModal = playerName;
-            const currentTeamTurn = snakeDraftOrder[state.currentPick];
-            const modal = document.getElementById('customModal');
-            document.getElementById('modalTitle').innerText = `${playerName} 선수`;
-            modal.style.display = 'flex';
-
-            const btnDraft = document.getElementById('btnConfirmDraft');
-            const btnSuper = document.getElementById('btnWishSuper');
-            const btnNormal = document.getElementById('btnWishNormal');
-            const desc = document.getElementById('modalDesc');
-
-            if (!myCoachData || myCoachData.id === 'admin') {
-                desc.innerText = "코치 로그인 시 액션이 가능합니다.";
-                btnDraft.style.display = 'none'; btnSuper.style.display = 'none'; btnNormal.style.display = 'none';
-            } else {
-                btnSuper.style.display = 'block'; btnNormal.style.display = 'block';
-                const cId = myCoachData.id;
-                const myWishes = state.coachWishes[cId] || { normal: [], super: null };
-
-                // 원픽 버튼 상태
-                if (myWishes.super === playerName) {
-                    btnSuper.innerText = "🔥 원픽 해제"; btnSuper.style.background = "#edf2f7"; btnSuper.style.color = "#4a5568";
-                } else if (myWishes.super) {
-                    btnSuper.innerText = `🔥 원픽 불가 (현재: ${myWishes.super})`; btnSuper.style.background = "#e2e8f0"; btnSuper.style.color = "#a0aec0";
-                } else {
-                    btnSuper.innerText = "🔥 원픽 지정 (코치당 1명)"; btnSuper.style.background = "#2d3748"; btnSuper.style.color = "#ecc94b";
-                }
-
-                // 일반 찜 상태
-                if (myWishes.normal && myWishes.normal.includes(playerName)) {
-                    btnNormal.innerText = "👀 찜 취소"; btnNormal.style.background = "#e2e8f0";
-                } else {
-                    btnNormal.innerText = "👀 일반 찜하기"; btnNormal.style.background = "#edf2f7";
-                }
-                
-                if (myCoachData.team === currentTeamTurn || myCoachData.team === 'test') {
-                    btnDraft.style.display = 'block';
-                } else {
-                    btnDraft.style.display = 'none';
-                }
-            }
-        }
-
-        function closeModal() { document.getElementById('customModal').style.display = 'none'; }
-
-        // 데이터 갱신 및 서버 전송 헬퍼
-        function updateState() {
-            if (myCoachData.id === 'test') render();
-            else db.ref('draftState').set(state).catch(e => console.error(e));
-            closeModal();
-        }
-
-        document.getElementById('btnConfirmDraft').onclick = function() {
-            if (!myCoachData || !selectedPlayerForModal) return;
-            const currentTeamTurn = snakeDraftOrder[state.currentPick];
-            const team = myCoachData.id === 'test' ? currentTeamTurn : myCoachData.team;
-            
-            state.rosters[team].push(selectedPlayerForModal);
-            state.drafted.push(selectedPlayerForModal);
-            
-            // 모든 코치의 위시리스트에서 영입된 선수 자동 삭제
-            Object.keys(state.coachWishes).forEach(cId => {
-                if (state.coachWishes[cId].super === selectedPlayerForModal) state.coachWishes[cId].super = null;
-                if (state.coachWishes[cId].normal) {
-                    state.coachWishes[cId].normal = state.coachWishes[cId].normal.filter(p => p !== selectedPlayerForModal);
-                }
-            });
-            
-            state.currentPick++;
-            if (state.currentPick === 24) {
-                const shuffled = specialPlayers.sort(() => 0.5 - Math.random());
-                state.rosters[1].push(shuffled[0]);
-                state.rosters[2].push(shuffled[1]);
-                state.rosters[3].push(shuffled[2]);
-            }
-            updateState();
-        };
-
-        document.getElementById('btnWishSuper').onclick = function() {
-            if (!myCoachData || myCoachData.id === 'test') return;
-            const cId = myCoachData.id;
-            if (!state.coachWishes[cId]) state.coachWishes[cId] = { normal: [], super: null };
-            
-            if (state.coachWishes[cId].super === selectedPlayerForModal) {
-                state.coachWishes[cId].super = null; // 취소
-            } else if (!state.coachWishes[cId].super) {
-                state.coachWishes[cId].super = selectedPlayerForModal; // 지정
-                // 일반 찜에 있었다면 제거
-                if(state.coachWishes[cId].normal) {
-                    state.coachWishes[cId].normal = state.coachWishes[cId].normal.filter(p => p !== selectedPlayerForModal);
-                }
-            }
-            updateState();
-        };
-
-        document.getElementById('btnWishNormal').onclick = function() {
-            if (!myCoachData || myCoachData.id === 'test') return;
-            const cId = myCoachData.id;
-            if (!state.coachWishes[cId]) state.coachWishes[cId] = { normal: [], super: null };
-            if (!state.coachWishes[cId].normal) state.coachWishes[cId].normal = [];
-            
-            if (state.coachWishes[cId].normal.includes(selectedPlayerForModal)) {
-                state.coachWishes[cId].normal = state.coachWishes[cId].normal.filter(p => p !== selectedPlayerForModal);
-            } else {
-                state.coachWishes[cId].normal.push(selectedPlayerForModal);
-                // 슈퍼 찜이었다면 취소
-                if(state.coachWishes[cId].super === selectedPlayerForModal) state.coachWishes[cId].super = null;
-            }
-            updateState();
-        };
-
-        function resetDraft() {
-            if (confirm("모든 데이터를 초기화하시겠습니까?")) {
-                if (myCoachData && myCoachData.id === 'test') {
-                    state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {} };
-                    render();
-                } else {
-                    db.ref('draftState').set({ currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {} });
-                }
-            }
-        }
-    </script>
-</body>
-</html>
