@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 상반기 풉살 내부매치 드래프트</title>
+    <title>2026 상반기 풉살 내부매치 슈퍼 드래프트</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -39,7 +39,6 @@
         .roster { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; min-height: 40px; }
         .roster-slot { padding: 8px 14px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 14px; font-weight: 600; }
         .roster-slot.filled { background: #2d3748; color: white; border-color: #2d3748; }
-        .special-player { background: #ecc94b !important; color: #744210 !important; }
 
         .auth-panel { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-bottom: 15px; padding: 15px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         input[type="text"] { padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 14px; width: 160px; }
@@ -69,7 +68,7 @@
 <body>
 
     <div class="header">
-        <h1>🏆 2026 상반기 풉살 내부매치 드래프트</h1>
+        <h1>🏆 2026 상반기 풉살 내부매치 슈퍼 드래프트</h1>
         <div class="auth-panel">
             <input type="text" id="authCode" placeholder="코치별 전술 암호 입력" autocomplete="off">
             <button class="btn-login" onclick="login()">접속</button>
@@ -138,7 +137,6 @@
         const specialPlayers = ['송희', '이지', '재인'];
         const snakeDraftOrder = [1, 2, 3, 3, 2, 1, 1, 2, 3, 3, 2, 1, 1, 2, 3, 3, 2, 1, 1, 2, 3, 3, 2, 1];
 
-        // 코치별 개인 코드 및 팀 매핑
         const coachAuth = {
             'mh': { name: '민호 코치', team: 1 },
             'jh': { name: '준하 코치', team: 1 },
@@ -176,10 +174,15 @@
                 loginStatus.innerText = `${myCoachData.name} 접속됨`;
                 loginStatus.style.color = myCoachData.team === 1 ? '#3182ce' : myCoachData.team === 2 ? '#e53e3e' : '#38a169';
                 btnReset.style.display = 'none';
-            } else if (code === 'master-futsal') {
+            } else if (code === 'master') {
                 myCoachData = { name: '마스터', team: 'admin' };
                 loginStatus.innerText = '🛠️ 마스터 관리자 접속';
                 btnReset.style.display = 'inline-block';
+            } else if (code === 'test') {
+                myCoachData = { name: '테스트', team: 'test' };
+                loginStatus.innerText = '🧪 테스트 모드';
+                btnReset.style.display = 'inline-block';
+                state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], wishlist: {} };
             } else {
                 alert('유효하지 않은 전술 암호입니다.');
                 myCoachData = null;
@@ -208,6 +211,8 @@
                 if (myCoachData && myCoachData.team === currentTeamTurn) {
                     indicator.innerText += " - 👈 우리 팀 차례!";
                     indicator.style.background = "#e53e3e";
+                } else if (myCoachData && myCoachData.team === 'test') {
+                    indicator.style.background = "#805ad5";
                 } else {
                     indicator.style.background = "#2c3e50";
                 }
@@ -239,13 +244,18 @@
                 poolGrid.appendChild(el);
             });
 
+            // 팀 로스터 렌더링 (가나다 순으로 완벽하게 혼합)
             for (let i = 1; i <= 3; i++) {
                 const rosterEl = document.getElementById(`roster-${i}`);
                 rosterEl.innerHTML = '';
+                
                 let displayRoster = isFinished ? [...state.rosters[i]].sort() : state.rosters[i];
+                
                 displayRoster.forEach(player => {
-                    rosterEl.innerHTML += `<div class="roster-slot filled ${specialPlayers.includes(player) ? 'special-player' : ''}">${player}</div>`;
+                    // 특수 스타일 제거: 모두 동일한 "roster-slot filled" 클래스 적용
+                    rosterEl.innerHTML += `<div class="roster-slot filled">${player}</div>`;
                 });
+                
                 const emptyCount = 8 - state.rosters[i].filter(p => !specialPlayers.includes(p)).length;
                 for(let j=0; j<emptyCount; j++) rosterEl.innerHTML += `<div class="roster-slot">빈 자리</div>`;
             }
@@ -267,8 +277,9 @@
             } else {
                 document.getElementById('btnToggleWish').style.display = 'block';
                 document.getElementById('btnToggleWish').innerText = state.wishlist[playerName] === myCoachData.team ? "찜 취소" : "👀 찜하기";
-                if (myCoachData.team === currentTeamTurn) {
-                    desc.innerText = `현재 우리 팀 차례입니다. ${playerName} 선수를 영입하시겠습니까?`;
+                
+                if (myCoachData.team === currentTeamTurn || myCoachData.team === 'test') {
+                    desc.innerText = `해당 선수를 영입하시겠습니까?`;
                     document.getElementById('btnConfirmDraft').style.display = 'block';
                 } else {
                     desc.innerText = "지금은 다른 팀의 턴입니다. 이 선수를 찜해둘까요?";
@@ -281,7 +292,9 @@
 
         document.getElementById('btnConfirmDraft').onclick = function() {
             if (!myCoachData || !selectedPlayerForModal) return;
-            const team = myCoachData.team;
+            const currentTeamTurn = snakeDraftOrder[state.currentPick];
+            const team = myCoachData.team === 'test' ? currentTeamTurn : myCoachData.team;
+            
             state.rosters[team].push(selectedPlayerForModal);
             state.drafted.push(selectedPlayerForModal);
             delete state.wishlist[selectedPlayerForModal];
@@ -293,12 +306,15 @@
                 state.rosters[2].push(shuffled[1]);
                 state.rosters[3].push(shuffled[2]);
             }
-            db.ref('draftState').set(state);
+            
+            if (myCoachData.team === 'test') { render(); } 
+            else { db.ref('draftState').set(state); }
+            
             closeModal();
         };
 
         document.getElementById('btnToggleWish').onclick = function() {
-            if (!myCoachData || !selectedPlayerForModal) return;
+            if (!myCoachData || !selectedPlayerForModal || myCoachData.team === 'test') return;
             const team = myCoachData.team;
             if (state.wishlist[selectedPlayerForModal] === team) delete state.wishlist[selectedPlayerForModal];
             else state.wishlist[selectedPlayerForModal] = team;
@@ -308,7 +324,12 @@
 
         function resetDraft() {
             if (confirm("모든 데이터를 초기화하시겠습니까?")) {
-                db.ref('draftState').set({ currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], wishlist: {} });
+                if (myCoachData && myCoachData.team === 'test') {
+                    state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], wishlist: {} };
+                    render();
+                } else {
+                    db.ref('draftState').set({ currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], wishlist: {} });
+                }
             }
         }
     </script>
