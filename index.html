@@ -27,41 +27,47 @@
         .container { display: flex; flex-direction: column; gap: 15px; max-width: 1400px; margin: 0 auto; transition: 0.5s; }
         
         .player-pool { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 12px; margin-top: 15px; }
         
-        /* 선수 명단 레이아웃 대폭 상향 */
-        .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 15px; margin-top: 15px; }
-        
+        /* 선수 카드 디자인 개선 (다이나믹 사이즈 적용) */
         .player-card { 
-            padding: 15px 5px 10px 5px; 
-            background: #edf2f7; 
+            padding: 12px 6px; 
+            background: #ffffff; /* 깔끔한 흰색 배경 */
             border-radius: 12px; 
             cursor: pointer; 
             border: 2px solid transparent; 
-            transition: 0.2s; 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            justify-content: flex-start;
-            min-height: 90px; /* 카드를 넓고 길게 만듦 */
-            gap: 8px;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+            border: 1px solid #e2e8f0;
         }
-        .player-card:hover { background: #e2e8f0; transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .player-card.disabled { opacity: 0.3; pointer-events: none; background: #a0aec0; }
+        .player-card:hover { background: #f8fafc; transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); border-color: #cbd5e0; }
+        .player-card.disabled { opacity: 0.4; pointer-events: none; background: #e2e8f0; border-color: transparent; box-shadow: none; }
         
-        .player-name { font-weight: 800; font-size: 16px; color: #2d3748; }
+        .player-name { font-weight: 800; font-size: 15px; color: #1a202c; }
 
-        /* 뱃지가 카드 내부에서 차곡차곡 쌓이도록 변경 */
+        /* 뱃지가 이름 밑에 차곡차곡 쌓임 */
         .wish-badges-container { 
             display: flex; 
             flex-wrap: wrap; 
             gap: 4px; 
             justify-content: center; 
             width: 100%; 
-            padding: 0 5px; 
-            box-sizing: border-box; 
         }
-        .wish-badge { padding: 3px 6px; border-radius: 8px; font-size: 11px; color: white; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.15); white-space: nowrap; }
-        .wish-badge.super { border: 1px solid #ecc94b; color: #ecc94b; background-color: #2d3748 !important; }
+        .wish-badge { 
+            padding: 2px 6px; 
+            border-radius: 6px; 
+            font-size: 10px; 
+            color: white; 
+            font-weight: 800; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+            white-space: nowrap; 
+        }
+        .wish-badge.super { border: 1px solid #ecc94b; color: #ecc94b; background-color: #1a202c !important; }
 
         .teams-container { display: flex; flex-direction: column; gap: 15px; }
         .team-box { background: white; padding: 15px; border-radius: 15px; border-top: 6px solid #ccc; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); flex: 1; }
@@ -70,7 +76,6 @@
         .roster-slot { padding: 8px 14px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 14px; font-weight: 600; }
         .roster-slot.filled { background: #2d3748; color: white; border-color: #2d3748; }
 
-        /* 파워랭킹 영역 */
         .ranking-container { background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%); padding: 15px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); color: white; }
         .ranking-title { font-size: 16px; font-weight: 800; color: #ecc94b; margin-top: 0; margin-bottom: 15px; text-align: center; }
         .ranking-list { display: flex; flex-direction: column; gap: 8px; }
@@ -84,7 +89,6 @@
         button.btn-login { padding: 10px 15px; border: none; border-radius: 8px; background: #2b6cb0; color: white; cursor: pointer; font-weight: bold; }
         .btn-reset { background: #718096; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
 
-        /* 모달 스타일 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); }
         .modal-content { background: white; padding: 25px; border-radius: 20px; text-align: center; max-width: 320px; width: 90%; }
         .modal-buttons { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
@@ -122,7 +126,7 @@
 
     <div class="container" id="mainContainer">
         <div class="player-pool" id="poolSection">
-            <h3 style="margin-top: 0;">대기 선수 명단 <span style="font-size: 12px; color: #718096;">(가나다순)</span></h3>
+            <h3 style="margin-top: 0; color: #1a202c;">대기 선수 명단 <span style="font-size: 13px; color: #718096; font-weight: 500;">(가나다순)</span></h3>
             <div class="pool-grid" id="poolGrid"></div>
         </div>
 
@@ -266,7 +270,6 @@
             const rankingSection = document.getElementById('rankingSection');
             const mainContainer = document.getElementById('mainContainer');
 
-            // --- 랭킹 업데이트 ---
             const rankingList = document.getElementById('rankingList');
             rankingList.innerHTML = '';
             const rankings = calculateRankings();
@@ -319,10 +322,8 @@
                 const el = document.createElement('div');
                 el.className = `player-card ${isDrafted ? 'disabled' : ''}`;
                 
-                // 선수 이름 추가
                 el.innerHTML = `<div class="player-name">${player}</div>`;
                 
-                // 뱃지들을 카드 내부에 렌더링
                 if (!isDrafted && myCoachData && myCoachData.id !== 'admin') {
                     let badgesHtml = '<div class="wish-badges-container">';
                     Object.entries(state.coachWishes || {}).forEach(([cId, wishes]) => {
@@ -376,7 +377,6 @@
                 const cId = myCoachData.id;
                 const myWishes = state.coachWishes[cId] || { normal: [], super: null };
 
-                // 원픽 버튼 상태 로직 개선 (UX 픽스)
                 if (myWishes.super === playerName) {
                     btnSuper.innerText = "🔥 원픽 해제";
                     btnSuper.style.background = "#edf2f7"; btnSuper.style.color = "#4a5568";
@@ -388,7 +388,6 @@
                     btnSuper.style.background = "#2d3748"; btnSuper.style.color = "#ecc94b";
                 }
 
-                // 일반 찜 상태
                 if (myWishes.normal && myWishes.normal.includes(playerName)) {
                     btnNormal.innerText = "👀 찜 취소"; btnNormal.style.background = "#e2e8f0";
                 } else {
@@ -442,11 +441,9 @@
             if (!state.coachWishes[cId]) state.coachWishes[cId] = { normal: [], super: null };
             
             if (state.coachWishes[cId].super === selectedPlayerForModal) {
-                state.coachWishes[cId].super = null; // 원픽 취소
+                state.coachWishes[cId].super = null;
             } else {
-                state.coachWishes[cId].super = selectedPlayerForModal; // 기존 원픽 덮어쓰기
-                
-                // 만약 일반 찜하기 목록에 있었다면 제거
+                state.coachWishes[cId].super = selectedPlayerForModal;
                 if(state.coachWishes[cId].normal) {
                     state.coachWishes[cId].normal = state.coachWishes[cId].normal.filter(p => p !== selectedPlayerForModal);
                 }
@@ -464,8 +461,6 @@
                 state.coachWishes[cId].normal = state.coachWishes[cId].normal.filter(p => p !== selectedPlayerForModal);
             } else {
                 state.coachWishes[cId].normal.push(selectedPlayerForModal);
-                
-                // 슈퍼 찜이었다면 일반 찜으로 강등되므로 슈퍼 찜 초기화
                 if(state.coachWishes[cId].super === selectedPlayerForModal) state.coachWishes[cId].super = null;
             }
             updateState();
