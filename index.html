@@ -385,8 +385,8 @@
             });
 
 
-           // ===============================================
-            // 팀 명단 (로스터) 렌더링 (Hype 뱃지 로직 추가)
+            // ===============================================
+            // 팀 명단 (로스터) 렌더링 (Hype 뱃지 로직 추가, 특수선수 색상 제거)
             // ===============================================
             for (let i = 1; i <= 3; i++) {
                 const rosterEl = document.getElementById(`roster-${i}`);
@@ -404,11 +404,8 @@
                         else if (rankIndex >= 3 && rankIndex <= 9) hypeIconHtml = '<div class="hype-icon">🔥</div>'; 
                     }
                     
-                    // 누락되었던 특수 선수 변수 선언 추가
-                    const isSpecial = specialPlayers.includes(player);
-                    const styleOverride = isSpecial ? 'background: #ecc94b; color: #744210; border-color: #ecc94b;' : '';
-
-                    rosterEl.innerHTML += `<div class="roster-slot filled" style="${styleOverride}">${player} ${hypeIconHtml}</div>`;
+                    // 특수 선수 색상 구분을 없애고 모든 선수가 동일한 스타일을 갖도록 수정했습니다.
+                    rosterEl.innerHTML += `<div class="roster-slot filled">${player} ${hypeIconHtml}</div>`;
                 });
 
                 if (!isFinished) {
