@@ -118,11 +118,14 @@
             .teams-container { flex: 1.5; }
             .ranking-container { flex: 0.8; position: sticky; top: 15px; }
             
-            /* PC 버전 발표 모드는 가로로 3팀 나열 */
+            /* PC 버전 발표 모드 개선 (예쁜 비율의 세로 리스트) */
             .final-view .container { flex-direction: row; justify-content: center; }
             .final-view .teams-container { flex-direction: row; width: 100%; max-width: 1200px; gap: 30px; }
-            .final-view .team-box { flex: 1; }
-            .final-view .roster { grid-template-columns: 1fr; } /* PC는 1열로 세로 정렬 */
+            .final-view .team-box { flex: 1; display: flex; flex-direction: column; align-items: center; }
+            
+            /* 그리드 대신 Flexbox를 사용하여 선수 카드를 가운데 정렬하고 너비를 제한합니다 */
+            .final-view .roster { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 12px; }
+            .final-view .roster-slot.filled { width: 70%; max-width: 220px; } 
         }
     </style>
 </head>
