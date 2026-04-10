@@ -10,15 +10,24 @@
     
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        body { font-family: 'Pretendard', sans-serif; background-color: #f0f4f8; color: #333; margin: 0; padding: 15px; }
-        .header { text-align: center; margin-bottom: 15px; }
-        h1 { font-size: 24px; color: #1a365d; margin-bottom: 5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
-        .turn-indicator { font-size: 20px; font-weight: bold; padding: 12px; background: #2c3e50; color: white; border-radius: 10px; display: inline-block; width: 100%; box-sizing: border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f4f7f6; color: #2d3436; margin: 0; padding: 15px; }
         
-        .sequence-container { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; padding: 12px; background: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow-x: auto; }
-        .seq-badge { padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; color: white; white-space: nowrap; opacity: 0.4; transition: 0.3s; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 22px; color: #1a365d; margin-bottom: 10px; font-weight: 900; }
+        
+        /* 로그인 패널 */
+        .auth-panel { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-bottom: 15px; padding: 15px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        input[type="text"] { padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 14px; width: 140px; outline: none; }
+        button.btn-login { padding: 10px 15px; border: none; border-radius: 8px; background: #2b6cb0; color: white; cursor: pointer; font-weight: bold; }
+        .btn-reset { background: #e53e3e; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
+
+        /* 턴 인디케이터 */
+        .turn-indicator { font-size: 18px; font-weight: 900; padding: 15px; background: #2c3e50; color: white; border-radius: 12px; display: inline-block; width: 100%; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: 0.3s; }
+        
+        .sequence-container { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; padding: 10px; background: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow-x: auto; }
+        .seq-badge { padding: 6px 10px; border-radius: 20px; font-size: 12px; font-weight: 900; color: white; white-space: nowrap; opacity: 0.3; transition: 0.3s; }
         .seq-badge.current { opacity: 1; transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        .seq-arrow { color: #bdc3c7; font-size: 12px; }
+        .seq-arrow { color: #cbd5e0; font-size: 10px; }
         
         .bg-t1 { background-color: #3182ce; }
         .bg-t2 { background-color: #e53e3e; }
@@ -26,104 +35,143 @@
 
         .container { display: flex; flex-direction: column; gap: 15px; max-width: 1400px; margin: 0 auto; transition: 0.5s; }
         
-        .player-pool { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 12px; margin-top: 15px; }
+        /* 대기 선수 풀 */
+        .player-pool { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 10px; margin-top: 15px; }
         
-        .player-card { padding: 12px 6px; background: #ffffff; border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; }
-        .player-card:hover { background: #f8fafc; transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); border-color: #cbd5e0; }
-        .player-card.disabled { opacity: 0.4; pointer-events: none; background: #e2e8f0; border-color: transparent; box-shadow: none; }
-        .player-name { font-weight: 800; font-size: 15px; color: #1a202c; }
+        .player-card { padding: 12px 4px; background: #ffffff; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; }
+        .player-card:active { transform: scale(0.95); }
+        .player-card.disabled { opacity: 0.3; pointer-events: none; background: #edf2f7; border-color: transparent; box-shadow: none; }
+        .player-name { font-weight: 900; font-size: 15px; color: #2d3748; }
 
         .wish-badges-container { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; width: 100%; }
-        .wish-badge { padding: 2px 6px; border-radius: 6px; font-size: 10px; color: white; font-weight: 800; box-shadow: 0 1px 2px rgba(0,0,0,0.1); white-space: nowrap; }
+        .wish-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; font-weight: 900; box-shadow: 0 1px 2px rgba(0,0,0,0.1); white-space: nowrap; }
         .wish-badge.super { border: 1px solid #ecc94b; color: #ecc94b; background-color: #1a202c !important; }
 
+        /* 드래프트 중 팀 보드 (가로 정렬) */
         .teams-container { display: flex; flex-direction: column; gap: 15px; }
-        .team-box { background: white; padding: 15px; border-radius: 15px; border-top: 6px solid #ccc; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); flex: 1; }
-        .team-1 { border-color: #3182ce; } .team-2 { border-color: #e53e3e; } .team-3 { border-color: #38a169; }
-        .roster { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 40px; }
-        .roster-slot { padding: 8px 14px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 14px; font-weight: 600; }
-        .roster-slot.filled { background: #2d3748; color: white; border-color: #2d3748; }
+        .team-box { background: white; padding: 15px; border-radius: 16px; border-top: 6px solid #cbd5e0; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+        .team-1 { border-top-color: #3182ce; } .team-2 { border-top-color: #e53e3e; } .team-3 { border-top-color: #38a169; }
+        
+        .team-title { margin: 0 0 10px 0; font-size: 16px; font-weight: 900; display: flex; justify-content: space-between; align-items: center; }
+        .roster { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; }
+        .roster-slot { padding: 8px 12px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-weight: bold; color: #a0aec0; }
+        .roster-slot.filled { background: #2d3748; color: white; border-color: #2d3748; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        .ranking-container { background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%); padding: 15px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); color: white; }
-        .ranking-title { font-size: 16px; font-weight: 800; color: #ecc94b; margin-top: 0; margin-bottom: 15px; text-align: center; }
+        /* Hype 랭킹 (사이드바) */
+        .ranking-container { background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%); padding: 20px; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); color: white; }
+        .ranking-title { font-size: 16px; font-weight: 900; color: #ecc94b; margin-top: 0; margin-bottom: 15px; text-align: center; }
         .ranking-list { display: flex; flex-direction: column; gap: 8px; }
-        .rank-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+        .rank-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 8px; font-size: 14px; }
         .rank-num { font-weight: 900; color: #ecc94b; width: 20px; }
         .rank-name { font-weight: bold; flex: 1; }
         .rank-score { font-size: 12px; color: #a0aec0; font-weight: bold; }
 
-        .auth-panel { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-bottom: 15px; padding: 15px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        input[type="text"] { padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 14px; width: 160px; outline: none; }
-        button.btn-login { padding: 10px 15px; border: none; border-radius: 8px; background: #2b6cb0; color: white; cursor: pointer; font-weight: bold; }
-        .btn-reset { background: #718096; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
+        /* 모달 창 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); }
+        .modal-content { background: white; padding: 25px; border-radius: 24px; text-align: center; max-width: 320px; width: 90%; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .modal-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .btn-draft { background: #e53e3e; color: white; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 10px rgba(229, 62, 62, 0.3); }
+        .btn-wish-super { background: #2d3748; color: #ecc94b; border: 2px solid #ecc94b; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: 0.2s; }
+        .btn-wish-normal { background: #edf2f7; color: #4a5568; border: 1px solid #cbd5e0; padding: 12px; border-radius: 12px; font-weight: 900; cursor: pointer; transition: 0.2s; }
+        .btn-cancel { background: transparent; color: #a0aec0; border: none; padding: 10px; font-weight: bold; cursor: pointer; text-decoration: underline; margin-top: 5px; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); }
-        .modal-content { background: white; padding: 25px; border-radius: 20px; text-align: center; max-width: 320px; width: 90%; }
-        .modal-buttons { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
-        .btn-draft { background: #e53e3e; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .btn-wish-super { background: #2d3748; color: #ecc94b; border: 2px solid #ecc94b; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-wish-normal { background: #edf2f7; color: #4a5568; border: 1px solid #cbd5e0; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-cancel { background: transparent; color: #a0aec0; border: none; padding: 10px; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        /* ========================================================= */
+        /* ✨ 드래프트 완료 후 발표 모드 (Final View) 스타일 ✨ */
+        /* ========================================================= */
+        
+        /* 발표 모드 진입 시 불필요한 요소 완벽히 숨김 */
+        .final-view .auth-panel,
+        .final-view .sequence-container,
+        .final-view .player-pool,
+        .final-view .ranking-container { display: none !important; }
+        
+        .final-view .turn-indicator { background: linear-gradient(135deg, #ecc94b 0%, #d69e2e 100%); color: #1a202c; font-size: 20px; box-shadow: 0 10px 20px rgba(236, 201, 75, 0.3); text-shadow: 1px 1px 0px rgba(255,255,255,0.5); }
 
-        .final-view .teams-container { flex-direction: row; flex-wrap: wrap; }
-        .final-view .team-box { text-align: center; }
-        .final-view .roster { justify-content: center; }
+        /* 발표 모드 팀 박스 디자인 전면 개편 */
+        .final-view .teams-container { display: flex; flex-direction: column; gap: 20px; margin-top: 10px; }
+        
+        .final-view .team-box { border: none; border-radius: 20px; padding: 25px 15px; position: relative; overflow: hidden; }
+        .final-view .team-1 { background: linear-gradient(to bottom, rgba(49,130,206,0.1) 0%, white 40%); box-shadow: 0 8px 25px rgba(49,130,206,0.15); border: 1px solid rgba(49,130,206,0.2); }
+        .final-view .team-2 { background: linear-gradient(to bottom, rgba(229,62,62,0.1) 0%, white 40%); box-shadow: 0 8px 25px rgba(229,62,62,0.15); border: 1px solid rgba(229,62,62,0.2); }
+        .final-view .team-3 { background: linear-gradient(to bottom, rgba(56,161,105,0.1) 0%, white 40%); box-shadow: 0 8px 25px rgba(56,161,105,0.15); border: 1px solid rgba(56,161,105,0.2); }
+
+        /* 발표 모드 팀 타이틀 중앙 정렬 및 강조 */
+        .final-view .team-title { justify-content: center; font-size: 22px; margin-bottom: 20px; text-shadow: 0 2px 4px rgba(255,255,255,0.8); }
+        .final-view .team-title.t1 { color: #2b6cb0; }
+        .final-view .team-title.t2 { color: #c53030; }
+        .final-view .team-title.t3 { color: #276749; }
+
+        /* 발표 모드 선수 뱃지 디자인 (크고 아름답게) */
+        .final-view .roster { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; } /* 2열 배치로 시원하게 */
+        .final-view .roster-slot.filled { padding: 15px; border-radius: 12px; font-size: 18px; font-weight: 900; justify-content: center; background: white; color: #2d3748; border: 2px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: 0.3s; position: relative; }
+        .final-view .roster-slot.filled:active { transform: scale(0.95); }
+
+        /* Hype 아이콘 뱃지 스타일 (발표 모드 전용) */
+        .hype-icon { position: absolute; top: -10px; right: -5px; font-size: 16px; background: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid #edf2f7; z-index: 10; }
+
+        /* ========================================================= */
 
         @media (min-width: 1024px) {
             .container { flex-direction: row; align-items: flex-start; }
             .player-pool { flex: 1.2; }
             .teams-container { flex: 1.5; }
             .ranking-container { flex: 0.8; position: sticky; top: 15px; }
-            .final-view .container { flex-direction: column; }
+            
+            /* PC 버전 발표 모드는 가로로 3팀 나열 */
+            .final-view .container { flex-direction: row; justify-content: center; }
+            .final-view .teams-container { flex-direction: row; width: 100%; max-width: 1200px; gap: 30px; }
+            .final-view .team-box { flex: 1; }
+            .final-view .roster { grid-template-columns: 1fr; } /* PC는 1열로 세로 정렬 */
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>🏆 2026 상반기 풉살 내부매치 슈퍼 드래프트</h1>
-        <div class="auth-panel">
-            <input type="text" id="authCode" placeholder="코치 전술 암호 입력" autocomplete="off">
+        <h1>🏆 2026 상반기 풉살 슈퍼 드래프트</h1>
+        <div class="auth-panel" id="authPanel">
+            <input type="text" id="authCode" placeholder="코치 암호 입력" autocomplete="off">
             <button class="btn-login" onclick="login()">접속</button>
-            <button class="btn-reset" id="btnReset" onclick="resetDraft()">초기화 (Master)</button>
-            <span id="loginStatus" style="font-weight: bold; color: #718096; margin-left: 10px;">관전 모드</span>
+            <button class="btn-reset" id="btnReset" onclick="resetDraft()">초기화</button>
+            <span id="loginStatus" style="font-weight: 900; color: #718096; margin-left: 5px;">관전 모드</span>
         </div>
-        <div class="turn-indicator" id="turnIndicator">데이터 불러오는 중...</div>
+        <div class="turn-indicator" id="turnIndicator">데이터를 불러오는 중입니다...</div>
         <div class="sequence-container" id="sequenceContainer"></div>
     </div>
 
     <div class="container" id="mainContainer">
+        
         <div class="player-pool" id="poolSection">
-            <h3 style="margin-top: 0; color: #1a202c;">대기 선수 명단 <span style="font-size: 13px; color: #718096; font-weight: 500;">(가나다순)</span></h3>
+            <h3 style="margin-top: 0; color: #1a202c; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;">📋 대기 선수 명단 <span style="font-size: 13px; color: #a0aec0; font-weight: bold;">(가나다순)</span></h3>
             <div class="pool-grid" id="poolGrid"></div>
         </div>
 
         <div class="teams-container" id="teamsContainer">
             <div class="team-box team-1">
-                <h3 style="margin: 0; color: #3182ce;">Team 1 (민호 & 준하)</h3>
+                <h3 class="team-title t1">Team 1 <span style="font-size:14px; color:#718096; font-weight:bold;">(민호 & 준하)</span></h3>
                 <div class="roster" id="roster-1"></div>
             </div>
             <div class="team-box team-2">
-                <h3 style="margin: 0; color: #e53e3e;">Team 2 (원배 & 경표)</h3>
+                <h3 class="team-title t2">Team 2 <span style="font-size:14px; color:#718096; font-weight:bold;">(원배 & 경표)</span></h3>
                 <div class="roster" id="roster-2"></div>
             </div>
             <div class="team-box team-3">
-                <h3 style="margin: 0; color: #38a169;">Team 3 (경목 & 원언)</h3>
+                <h3 class="team-title t3">Team 3 <span style="font-size:14px; color:#718096; font-weight:bold;">(경목 & 원언)</span></h3>
                 <div class="roster" id="roster-3"></div>
             </div>
         </div>
 
         <div class="ranking-container" id="rankingSection">
-            <h3 class="ranking-title">🔥 Hype 랭킹 Top 10</h3>
+            <h3 class="ranking-title">🔥 실시간 Hype 랭킹 Top 10</h3>
             <div class="ranking-list" id="rankingList"></div>
         </div>
     </div>
 
     <div class="modal-overlay" id="customModal">
         <div class="modal-content">
-            <div class="modal-title" id="modalTitle" style="font-size: 22px; font-weight: 800; margin-bottom: 5px;"></div>
-            <div class="modal-desc" id="modalDesc" style="font-size: 14px; color: #4a5568; margin-bottom: 15px;"></div>
+            <div class="modal-title" id="modalTitle" style="font-size: 24px; font-weight: 900; margin-bottom: 5px;"></div>
+            <div class="modal-desc" id="modalDesc" style="font-size: 14px; font-weight: bold; color: #a0aec0; margin-bottom: 20px;"></div>
             <div class="modal-buttons">
                 <button class="btn-draft" id="btnConfirmDraft">✅ 영입 확정</button>
                 <button class="btn-wish-super" id="btnWishSuper">🔥 원픽 지정 (코치당 1명)</button>
@@ -134,6 +182,7 @@
     </div>
 
     <script>
+        // 코치님의 기존 Firebase 정보 유지
         const firebaseConfig = {
             apiKey: "AIzaSyBPwaBOuMDxIF7j3puG-bOtMjnhWPcS_rQ",
             authDomain: "futsaldraft-feb5c.firebaseapp.com",
@@ -166,7 +215,6 @@
             'wo': { id: 'wo', name: '원언', team: 3 }
         };
 
-        // lockedHype 속성 추가 (영구 보존 점수)
         let state = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {}, lockedHype: {} };
         let myCoachData = null;
         let selectedPlayerForModal = null;
@@ -182,8 +230,6 @@
                     coachWishes: data.coachWishes || {},
                     lockedHype: data.lockedHype || {}
                 };
-                
-                // [안전장치 추가] Firebase가 빈 배열을 삭제하는 것을 방지
                 if (!state.rosters[1]) state.rosters[1] = [];
                 if (!state.rosters[2]) state.rosters[2] = [];
                 if (!state.rosters[3]) state.rosters[3] = [];
@@ -218,6 +264,7 @@
             render();
         }
 
+        // Hype 점수 계산 함수 (발표 시 Hype 아이콘 부여를 위해 전역 스코어 맵 생성)
         function calculateRankings() {
             let scores = [];
             regularPlayers.forEach(player => {
@@ -225,22 +272,20 @@
                 const draftIndex = state.drafted.indexOf(player);
                 
                 if (draftIndex !== -1) {
-                    // 영입된 선수는 기본 점수 + 박제된 찜 점수(lockedHype) 반영
                     score += (24 - draftIndex) * 10;
                     if (state.lockedHype && state.lockedHype[player]) {
                         score += state.lockedHype[player];
                     }
                 } else {
-                    // 아직 영입되지 않은 선수는 실시간 찜 점수 반영
                     Object.values(state.coachWishes || {}).forEach(wishes => {
                         if (wishes.normal && wishes.normal.includes(player)) score += 20;
                         if (wishes.super === player) score += 100;
                     });
                 }
-
                 if (score > 0) scores.push({ name: player, score: score });
             });
-            return scores.sort((a, b) => b.score - a.score).slice(0, 10);
+            // 전체를 점수 내림차순 정렬하여 반환
+            return scores.sort((a, b) => b.score - a.score);
         }
 
         function render() {
@@ -248,17 +293,19 @@
             const currentTeamTurn = snakeDraftOrder[state.currentPick];
             const indicator = document.getElementById('turnIndicator');
             const seqContainer = document.getElementById('sequenceContainer');
-            const poolSection = document.getElementById('poolSection');
-            const rankingSection = document.getElementById('rankingSection');
             const mainContainer = document.getElementById('mainContainer');
 
+            // Hype 랭킹 계산 (전체 순위)
+            const allRankings = calculateRankings();
+            
+            // 사이드바 Hype 랭킹 (Top 10만 표시 - 진행 중일 때만)
             const rankingList = document.getElementById('rankingList');
             rankingList.innerHTML = '';
-            const rankings = calculateRankings();
-            if (rankings.length === 0) {
+            const top10 = allRankings.slice(0, 10);
+            if (top10.length === 0) {
                 rankingList.innerHTML = '<div style="color:#a0aec0; text-align:center; padding: 20px 0; font-size:13px;">아직 데이터가 없습니다.</div>';
             } else {
-                rankings.forEach((r, idx) => {
+                top10.forEach((r, idx) => {
                     rankingList.innerHTML += `
                         <div class="rank-item">
                             <div class="rank-num">${idx + 1}</div>
@@ -269,15 +316,30 @@
                 });
             }
 
+            // ===============================================
+            // ✨ 드래프트 완료 시점 로직 (발표 모드) ✨
+            // ===============================================
             if (isFinished) {
                 indicator.innerText = "✨ 드래프트 완료! 최종 라인업이 확정되었습니다 ✨";
-                indicator.style.background = "#ecc94b"; indicator.style.color = "#744210";
-                seqContainer.style.display = "none";
-                poolSection.style.display = "none";
-                rankingSection.style.display = "none";
-                mainContainer.classList.add('final-view');
-                if (!confettiFired) { confetti({ particleCount: 150, spread: 80 }); confettiFired = true; }
+                mainContainer.classList.add('final-view'); // 🔑 핵심: 클래스 추가로 CSS를 싹 바꿉니다.
+                
+                if (!confettiFired) { 
+                    // 폭죽 효과 (연속 발사)
+                    var duration = 3 * 1000;
+                    var animationEnd = Date.now() + duration;
+                    var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+                    var interval = setInterval(function() {
+                        var timeLeft = animationEnd - Date.now();
+                        if (timeLeft <= 0) return clearInterval(interval);
+                        var particleCount = 50 * (timeLeft / duration);
+                        confetti(Object.assign({}, defaults, { particleCount, origin: { x: Math.random(), y: Math.random() - 0.2 } }));
+                    }, 250);
+                    confettiFired = true; 
+                }
             } else {
+                // 진행 중 로직
+                mainContainer.classList.remove('final-view');
                 indicator.innerText = `현재 턴: Team ${currentTeamTurn} (${state.currentPick + 1}픽)`;
                 if (myCoachData && myCoachData.team === currentTeamTurn) {
                     indicator.innerText += " - 👈 우리 팀 차례!"; indicator.style.background = "#e53e3e";
@@ -287,7 +349,7 @@
                     indicator.style.background = "#2c3e50";
                 }
 
-                let seqHtml = '<span class="sequence-label">👉 순서: </span>';
+                let seqHtml = '<span style="font-weight:900; font-size:12px; color:#718096; margin-right:5px;">👉 순서: </span>';
                 const endIdx = Math.min(24, state.currentPick + 6);
                 for(let i = state.currentPick; i < endIdx; i++) {
                     const teamNum = snakeDraftOrder[i];
@@ -297,13 +359,13 @@
                 seqContainer.innerHTML = seqHtml;
             }
 
+            // 대기 명단 렌더링
             const poolGrid = document.getElementById('poolGrid');
             poolGrid.innerHTML = '';
             regularPlayers.forEach(player => {
                 const isDrafted = state.drafted.includes(player);
                 const el = document.createElement('div');
                 el.className = `player-card ${isDrafted ? 'disabled' : ''}`;
-                
                 el.innerHTML = `<div class="player-name">${player}</div>`;
                 
                 if (!isDrafted && myCoachData && myCoachData.id !== 'admin') {
@@ -311,12 +373,8 @@
                     Object.entries(state.coachWishes || {}).forEach(([cId, wishes]) => {
                         const coachInfo = Object.values(coachAuth).find(c => c.id === cId);
                         if (!coachInfo) return;
-                        
-                        if (wishes.super === player) {
-                            badgesHtml += `<div class="wish-badge super">🔥${coachInfo.name}</div>`;
-                        } else if (wishes.normal && wishes.normal.includes(player)) {
-                            badgesHtml += `<div class="wish-badge bg-t${coachInfo.team}">${coachInfo.name}</div>`;
-                        }
+                        if (wishes.super === player) badgesHtml += `<div class="wish-badge super">🔥${coachInfo.name}</div>`;
+                        else if (wishes.normal && wishes.normal.includes(player)) badgesHtml += `<div class="wish-badge bg-t${coachInfo.team}">${coachInfo.name}</div>`;
                     });
                     badgesHtml += '</div>';
                     el.innerHTML += badgesHtml;
@@ -326,15 +384,39 @@
                 poolGrid.appendChild(el);
             });
 
+            // ===============================================
+            // 팀 명단 (로스터) 렌더링 (Hype 뱃지 로직 추가)
+            // ===============================================
             for (let i = 1; i <= 3; i++) {
                 const rosterEl = document.getElementById(`roster-${i}`);
                 rosterEl.innerHTML = '';
+                
+                // 발표 모드일 경우 가나다순으로 깔끔하게 정렬
                 let displayRoster = isFinished ? [...state.rosters[i]].sort() : state.rosters[i];
+                
                 displayRoster.forEach(player => {
-                    rosterEl.innerHTML += `<div class="roster-slot filled">${player}</div>`;
+                    let hypeIconHtml = '';
+                    
+                    // 발표 모드에서만 Hype 아이콘을 달아줌
+                    if (isFinished) {
+                        const rankIndex = allRankings.findIndex(r => r.name === player);
+                        if (rankIndex === 0) hypeIconHtml = '<div class="hype-icon">👑</div>'; // 1위
+                        else if (rankIndex >= 1 && rankIndex <= 2) hypeIconHtml = '<div class="hype-icon">🏅</div>'; // 2, 3위
+                        else if (rankIndex >= 3 && rankIndex <= 9) hypeIconHtml = '<div class="hype-icon">🔥</div>'; // 4~10위
+                    }
+                    
+                    // 특수 선수(깍두기)는 배경색 다르게
+                    const isSpecial = specialPlayers.includes(player);
+                    // const styleOverride = isSpecial ? 'background: #ecc94b; color: #744210; border-color: #ecc94b;' : '';
+
+                    rosterEl.innerHTML += `<div class="roster-slot filled" style="${styleOverride}">${player} ${hypeIconHtml}</div>`;
                 });
-                const emptyCount = 8 - state.rosters[i].filter(p => !specialPlayers.includes(p)).length;
-                for(let j=0; j<emptyCount; j++) rosterEl.innerHTML += `<div class="roster-slot">빈 자리</div>`;
+
+                // 진행 중일 때만 빈칸 표시 (발표 때는 꽉 차있으므로 생략)
+                if (!isFinished) {
+                    const emptyCount = 8 - state.rosters[i].filter(p => !specialPlayers.includes(p)).length;
+                    for(let j=0; j<emptyCount; j++) rosterEl.innerHTML += `<div class="roster-slot">선발 대기</div>`;
+                }
             }
         }
 
@@ -355,19 +437,20 @@
                 desc.innerText = "코치 로그인 시 액션이 가능합니다.";
                 btnDraft.style.display = 'none'; btnSuper.style.display = 'none'; btnNormal.style.display = 'none';
             } else {
+                desc.innerText = "이 선수에게 액션을 취하세요.";
                 btnSuper.style.display = 'block'; btnNormal.style.display = 'block';
                 const cId = myCoachData.id;
                 const myWishes = state.coachWishes[cId] || { normal: [], super: null };
 
                 if (myWishes.super === playerName) {
                     btnSuper.innerText = "🔥 원픽 해제";
-                    btnSuper.style.background = "#edf2f7"; btnSuper.style.color = "#4a5568";
+                    btnSuper.style.background = "#edf2f7"; btnSuper.style.color = "#4a5568"; btnSuper.style.borderColor = "#cbd5e0";
                 } else if (myWishes.super) {
                     btnSuper.innerText = `🔥 원픽 변경 (기존: ${myWishes.super} 취소)`;
-                    btnSuper.style.background = "#2d3748"; btnSuper.style.color = "#ecc94b";
+                    btnSuper.style.background = "#2d3748"; btnSuper.style.color = "#ecc94b"; btnSuper.style.borderColor = "#ecc94b";
                 } else {
                     btnSuper.innerText = "🔥 원픽 지정 (코치당 1명)";
-                    btnSuper.style.background = "#2d3748"; btnSuper.style.color = "#ecc94b";
+                    btnSuper.style.background = "#2d3748"; btnSuper.style.color = "#ecc94b"; btnSuper.style.borderColor = "#ecc94b";
                 }
 
                 if (myWishes.normal && myWishes.normal.includes(playerName)) {
@@ -397,7 +480,6 @@
             const currentTeamTurn = snakeDraftOrder[state.currentPick];
             const team = myCoachData.id === 'test' ? currentTeamTurn : myCoachData.team;
             
-            // [추가된 로직] 영입 시점의 찜 점수 계산하여 lockedHype에 영구 보존
             if (!state.lockedHype) state.lockedHype = {};
             let hypePoints = 0;
             Object.values(state.coachWishes || {}).forEach(w => {
@@ -458,13 +540,15 @@
         };
 
         function resetDraft() {
-            if (confirm("모든 데이터를 초기화하시겠습니까?")) {
+            if (confirm("🚨 경고! 모든 데이터(로스터, 순서, Hype점수)가 완전히 초기화됩니다. 계속하시겠습니까?")) {
                 const resetData = { currentPick: 0, rosters: { 1: [], 2: [], 3: [] }, drafted: [], coachWishes: {}, lockedHype: {} };
                 if (myCoachData && myCoachData.id === 'test') {
                     state = resetData;
                     render();
                 } else {
-                    db.ref('draftState').set(resetData);
+                    db.ref('draftState').set(resetData).then(() => {
+                        window.location.reload(); // 리셋 후 완전 초기화를 위해 새로고침
+                    });
                 }
             }
         }
