@@ -118,14 +118,11 @@
             .teams-container { flex: 1.5; }
             .ranking-container { flex: 0.8; position: sticky; top: 15px; }
             
-            /* PC 버전 발표 모드 개선 (예쁜 비율의 세로 리스트) */
-            .final-view .container { flex-direction: row; justify-content: center; }
-            .final-view .teams-container { flex-direction: row; width: 100%; max-width: 1200px; gap: 30px; }
-            .final-view .team-box { flex: 1; display: flex; flex-direction: column; align-items: center; }
-            
-            /* 그리드 대신 Flexbox를 사용하여 선수 카드를 가운데 정렬하고 너비를 제한합니다 */
-            .final-view .roster { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 12px; }
-            .final-view .roster-slot.filled { width: 70%; max-width: 220px; } 
+            /* ✨ PC 버전 발표 모드 디자인 전면 개선 ✨ */
+            .final-view .container { flex-direction: column; align-items: center; } 
+            .final-view .teams-container { flex-direction: row; width: 100%; max-width: 1000px; gap: 30px; justify-content: center; margin: 0 auto; }
+            .final-view .team-box { flex: 1; max-width: 320px; } /* 팀 박스가 무한정 가로로 늘어나는 것 방지 */
+            .final-view .roster { grid-template-columns: repeat(2, 1fr); gap: 10px; } /* PC에서도 2열로 아기자기하게 배치 */
         }
     </style>
 </head>
