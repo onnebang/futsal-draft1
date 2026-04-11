@@ -397,12 +397,7 @@
                 displayRoster.forEach(player => {
                     let hypeIconHtml = '';
                     
-                    if (isFinished) {
-                        const rankIndex = allRankings.findIndex(r => r.name === player);
-                        if (rankIndex === 0) hypeIconHtml = '<div class="hype-icon">👑</div>'; 
-                        else if (rankIndex >= 1 && rankIndex <= 2) hypeIconHtml = '<div class="hype-icon">🏅</div>'; 
-                        else if (rankIndex >= 3 && rankIndex <= 9) hypeIconHtml = '<div class="hype-icon">🔥</div>'; 
-                    }
+
                     
                     // 특수 선수 색상 구분을 없애고 모든 선수가 동일한 스타일을 갖도록 수정했습니다.
                     rosterEl.innerHTML += `<div class="roster-slot filled">${player} ${hypeIconHtml}</div>`;
