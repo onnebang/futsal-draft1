@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FC풉살 드래프트 관리자</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <h1>🛠 드래프트 관리자</h1>
+    <p class="hint">마스터 암호를 입력해주세요.</p>
+    <div class="mt"><input class="input" id="pass" placeholder="마스터 암호" autocomplete="off"
+      onkeydown="if(event.key==='Enter')login()"></div>
+    <div class="mt"><button class="btn block" id="btnLogin" onclick="login()">입장</button></div>
+    <div class="err mt hidden" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="ws hidden" id="app">
+  <aside class="sidebar">
+    <div class="ws-head"><div>
+      <div class="ws-name">⚽ FC풉살</div>
+      <div class="ws-sub">마스터 콘솔</div>
+    </div></div>
+    <nav class="channels">
+      <div class="ch-label">바로가기</div>
+      <button class="ch" onclick="location.href='index.html'"><span class="hash">#</span>선수 화면</button>
+      <button class="ch" onclick="location.href='coach.html'"><span class="hash">#</span>코치 보드</button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="ws-name">⚽ FC풉살 · 마스터</div>
+      <div class="topbar-channels">
+        <button class="ch" onclick="location.href='index.html'">선수 화면</button>
+        <button class="ch" onclick="location.href='coach.html'">코치 보드</button>
+      </div>
+    </div>
+    <header class="ch-head">
+      <div class="ch-title">🛠 운영 콘솔</div>
+      <div class="ch-desc">단계 전환 · 발표 진행 · 결과 공개</div>
+    </header>
+    <div class="pane" id="pane"></div>
+  </main>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/app.js"></script>
+<script>
+const { api, store, esc } = window.FDApp;
+const C = window.FD;
+let PASS = null, ST = null, TEAMS = [], TALLY = null;
+
+const STEPS = [
+  { phase: 'VOTE',    title: '① 투표 오픈',      desc: '선수들이 선호팀에 투표합니다.' },
+  { phase: 'REVEAL',  title: '② 투표 마감 · 발표', desc: '투표를 닫고 지명 순서를 공개합니다.' },
+  { phase: 'DRAFT',   title: '③ 드래프트 창 오픈', desc: '코치들이 각자 접속해 18픽을 진행합니다.' },
+  { phase: 'RESULT',  title: '④ 결과 공개',       desc: '가나다순 명단을 선수들에게 공개합니다.' },
+  { phase: 'PREDICT', title: '⑤ 예측 · 응원 오픈', desc: '우승 예측과 팀 응원 채널을 엽니다.' },
+  { phase: 'MATCH',   title: '⑥ 매치데이',        desc: '예측을 잠그고 경기 결과를 입력합니다.' },
+];
+
+async function login() {
+  const btn = document.getElementById('btnLogin'), err = document.getElementById('loginErr');
+  const pass = document.getElementById('pass').value.trim();
+  btn.disabled = true; err.classList.add('hidden');
+  try {
+    ST = await api.coachState(pass);
+    if (!ST.coach.is_master) throw new Error('마스터 암호가 아닙니다.');
+    PASS = pass; store.set('masterpass', pass);
+    TEAMS = await api.teams();
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    await refresh();
+    setInterval(refresh, 8000);
+  } catch (e) { err.textContent = e.message; err.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
+}
+
+async function refresh() {
+  ST = await api.coachState(PASS);
+  try { TALLY = await api.voteTally(); } catch { TALLY = null; }
+  render();
+}
+
+const teamOf = (c) => TEAMS.find((t) => t.code === c) || { name: c, color: '#888' };
+
+function render() {
+  const cur = C.PHASES.indexOf(ST.phase);
+  const order = ST.draft_order;
+
+  document.getElementById('pane').innerHTML = `
+    <div class="card">
+      <div class="row">
+        <span class="chip live">${esc(C.PHASE_LABEL[ST.phase] || ST.phase)}</span>
+        <span class="spacer"></span>
+        <span class="hint">투표 ${ST.vote_count}/18 · 드래프트 ${ST.cursor}/18</span>
+      </div>
+      <div class="mt">
+        ${STEPS.map((s) => {
+          const idx = C.PHASES.indexOf(s.phase);
+          const active = ST.phase === s.phase;
+          return `<div class="row" style="padding:9px 0;border-bottom:1px solid var(--border-soft)">
+            <div style="flex:1">
+              <b style="${active ? 'color:var(--green)' : ''}">${esc(s.title)}</b>
+              <div class="hint">${esc(s.desc)}</div>
+            </div>
+            <button class="btn small ${active ? '' : 'ghost'}"
+              onclick="setPhase('${s.phase}')" ${active ? 'disabled' : ''}>
+              ${active ? '진행 중' : (idx < cur ? '되돌리기' : '이 단계로')}</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    ${ST.phase === 'REVEAL' ? revealCard() : ''}
+    ${ST.cursor >= C.TOTAL_PICKS && ST.phase === 'DRAFT' ? publishCard() : ''}
+
+    <div class="card">
+      <h3>현재 집계</h3>
+      ${TALLY ? `<div class="mt">${TALLY.slice().sort((a, b) => b.score - a.score).map((t, i) =>
+        `<div class="row" style="padding:5px 0">
+          <span style="width:22px">${i + 1}.</span>
+          <b>${esc(teamOf(t.code).name)}</b><span class="spacer"></span>
+          <span class="hint">1순위 ${t.first} · 2순위 ${t.second}</span>
+          <b style="margin-left:10px">${t.score}점</b>
+        </div>`).join('')}</div>`
+        : '<p class="hint mt">투표가 마감되어야 집계가 보입니다.</p>'}
+      ${order ? `<p class="hint mt">확정 순서: <b>${order.map((c, i) => `${i + 1}️⃣ ${esc(teamOf(c).name)}`).join(' → ')}</b></p>` : ''}
+    </div>
+
+    <div class="card">
+      <h3 style="color:var(--red)">위험 구역</h3>
+      <p class="hint mt">모든 투표·픽·명단·댓글이 삭제되고 준비 단계로 돌아갑니다. 리허설 후 실전 시작할 때만 사용하세요.</p>
+      <div class="mt"><button class="btn danger small" onclick="reset()">전체 초기화</button></div>
+    </div>`;
+}
+
+function revealCard() {
+  const step = ST.reveal_step || 0;
+  return `<div class="card">
+    <h3>발표 진행</h3>
+    <p class="hint mt">먼저 <b>순서 확정</b>을 누른 뒤, 단계를 하나씩 올리면 모든 선수 화면이 동시에 바뀝니다.</p>
+    <div class="row mt">
+      <button class="btn small ${ST.draft_order ? 'ghost' : ''}" onclick="lockOrder()">
+        ${ST.draft_order ? '순서 다시 확정' : '① 순서 확정'}</button>
+    </div>
+    <div class="row mt">
+      ${[0, 1, 2, 3].map((s) => `<button class="btn small ${step === s ? '' : 'ghost'}"
+        onclick="setStep(${s})" ${ST.draft_order ? '' : 'disabled'}>
+        ${['대기', '3순위', '2순위', '1순위'][s]}</button>`).join('')}
+    </div>
+  </div>`;
+}
+
+function publishCard() {
+  return `<div class="card">
+    <h3>✅ 18픽 완료 — 결과 공개 준비됨</h3>
+    <p class="hint mt">코치들이 명단을 확인했다면 아래 버튼을 누르세요.
+      지명 순서를 제거하고 <b>가나다순</b>으로 정렬한 명단이 선수들에게 공개됩니다.</p>
+    <div class="mt"><button class="btn" onclick="publish()">결과 공개하기</button></div>
+  </div>`;
+}
+
+async function setPhase(p) {
+  if (!confirm(`단계를 "${C.PHASE_LABEL[p]}"(으)로 바꿀까요?`)) return;
+  try { ST = await api.masterSetPhase(PASS, p); await refresh(); } catch (e) { alert(e.message); }
+}
+async function setStep(s) { try { ST = await api.masterRevealStep(PASS, s); await refresh(); } catch (e) { alert(e.message); } }
+async function lockOrder() { try { ST = await api.masterLockOrder(PASS); await refresh(); } catch (e) { alert(e.message); } }
+async function publish() {
+  if (!confirm('선수 전원에게 명단이 공개됩니다. 진행할까요?')) return;
+  try { ST = await api.masterPublish(PASS); await refresh(); alert('공개되었습니다!'); } catch (e) { alert(e.message); }
+}
+async function reset() {
+  if (!confirm('정말 전체 초기화할까요? 되돌릴 수 없습니다.')) return;
+  if (prompt('확인을 위해 RESET 을 입력해주세요') !== 'RESET') return;
+  try { ST = await api.masterReset(PASS); await refresh(); alert('초기화되었습니다.'); } catch (e) { alert(e.message); }
+}
+
+const saved = store.get('masterpass');
+if (saved) document.getElementById('pass').value = saved;
+</script>
+</body>
+</html>

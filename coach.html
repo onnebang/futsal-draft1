@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>FC풉살 드래프트 보드 (코치 전용)</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- 로그인 게이트 -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <h1>⚽ 코치 드래프트 보드</h1>
+    <p class="hint">개별 전달받은 8자리 암호를 입력해주세요.</p>
+    <div class="mt">
+      <input class="input" id="pass" placeholder="암호 8자리" autocomplete="off"
+             onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <div class="mt"><button class="btn block" id="btnLogin" onclick="login()">입장하기</button></div>
+    <div class="err mt hidden" id="loginErr"></div>
+    <p class="hint mt" style="font-size:12px">이 화면은 코치 전용입니다. 선수들에게는 진행률만 공개돼요.</p>
+  </div>
+</div>
+
+<!-- 보드 -->
+<div class="ws hidden" id="board">
+  <aside class="sidebar">
+    <div class="ws-head">
+      <div>
+        <div class="ws-name">⚽ FC풉살</div>
+        <div class="ws-sub" id="sbWho">—</div>
+      </div>
+    </div>
+    <nav class="channels">
+      <div class="ch-label">코치 전용</div>
+      <button class="ch active"><span class="hash">#</span>드래프트보드</button>
+      <button class="ch" onclick="location.href='index.html'"><span class="hash">#</span>선수 화면 보기</button>
+      <div class="ch-label" style="margin-top:12px">내 팀</div>
+      <div style="padding:0 10px" id="sbRoster"></div>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="ws-name">⚽ FC풉살 <span style="font-weight:400;opacity:.7;font-size:13px" id="tbWho"></span></div>
+      <div class="topbar-channels">
+        <button class="ch active"><span class="hash">#</span>드래프트보드</button>
+        <button class="ch" onclick="location.href='index.html'"><span class="hash">#</span>선수 화면</button>
+      </div>
+    </div>
+
+    <header class="ch-head">
+      <div class="ch-title"># 드래프트보드</div>
+      <div class="ch-desc">코치 전용 · 선수에게는 진행률과 팀 차례만 공개됩니다</div>
+    </header>
+
+    <div class="pane wide" id="pane"></div>
+  </main>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/app.js"></script>
+<script>
+const { api, store, snakeTeam, snakeSeq, colorFor, esc } = window.FDApp;
+const C = window.FD;
+
+let PASS = null;
+let ST = null;
+let TEAMS = [];
+let selected = null;
+
+async function login() {
+  const btn = document.getElementById('btnLogin');
+  const err = document.getElementById('loginErr');
+  const pass = document.getElementById('pass').value.trim();
+  if (!pass) return;
+  btn.disabled = true; btn.textContent = '확인 중…'; err.classList.add('hidden');
+  try {
+    ST = await api.coachState(pass);
+    PASS = pass;
+    store.set('coachpass', pass);
+    TEAMS = await api.teams();
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('board').classList.remove('hidden');
+    render();
+    setInterval(refresh, 5000);
+  } catch (e) {
+    err.textContent = e.message; err.classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = '입장하기'; }
+}
+
+async function refresh() {
+  try { ST = await api.coachState(PASS); render(); } catch { /* 일시적 오류는 무시 */ }
+}
+
+const teamOf = (c) => TEAMS.find((t) => t.code === c) || { name: c, color: '#888', coaches: '' };
+
+function render() {
+  const me = ST.coach;
+  document.getElementById('sbWho').textContent =
+    me.is_master ? '마스터' : `${me.name} 코치 · ${teamOf(me.team).name}`;
+  document.getElementById('tbWho').textContent = '· ' + (me.is_master ? '마스터' : me.name + ' 코치');
+
+  const order = ST.draft_order;
+  const cur = ST.cursor;
+  const done = cur >= C.TOTAL_PICKS;
+  const nowTeam = order && !done ? snakeTeam(order, cur) : null;
+  const myTurn = nowTeam && (me.is_master || me.team === nowTeam);
+
+  // 사이드바: 내 팀 명단
+  const mine = ST.picks.filter((p) => p.team === (me.team || nowTeam));
+  document.getElementById('sbRoster').innerHTML = mine.length
+    ? mine.map((p) => `<div style="color:#fff;font-size:13px;padding:3px 0">${esc(p.player)}</div>`).join('')
+    : '<div style="color:var(--sidebar-text);font-size:12.5px">아직 없어요</div>';
+
+  if (ST.phase !== 'DRAFT') {
+    document.getElementById('pane').innerHTML = `
+      <div class="card">
+        <h3>지금은 드래프트 단계가 아니에요</h3>
+        <p class="hint mt">현재 단계: <b>${esc(C.PHASE_LABEL[ST.phase] || ST.phase)}</b>.
+        마스터가 드래프트를 열면 이 화면에서 지명할 수 있어요.</p>
+        ${ST.phase === 'VOTE' ? `<p class="hint mt">투표 참여 ${ST.vote_count} / 18명</p>` : ''}
+      </div>${done ? resultCard() : ''}`;
+    return;
+  }
+
+  const drafted = ST.picks.map((p) => p.player);
+  const pool = ST.players.filter((p) => !drafted.includes(p));
+
+  document.getElementById('pane').innerHTML = `
+    <div class="turn-banner ${myTurn ? 'mine' : ''}">
+      <div>
+        <div class="big">${done ? '✅ 18픽 완료!'
+          : myTurn ? `👉 지금 우리 팀 차례예요` : `현재 턴: ${esc(teamOf(nowTeam).name)}`}</div>
+        <div style="font-size:13px;opacity:.9;margin-top:2px">${cur} / ${C.TOTAL_PICKS}픽 진행</div>
+      </div>
+      <span class="spacer"></span>
+      ${done ? '' : `<button class="btn ghost small" style="background:#fff" onclick="copyHandoff()">📋 다음 팀 알림 문구 복사</button>`}
+    </div>
+
+    ${order ? `<div class="seq-bar">${seqBarHtml(order, cur)}</div>` : ''}
+
+    <div class="board">
+      <div class="card">
+        <h3>선수 풀 <span class="hint" style="font-weight:600">· 남은 ${pool.length}명</span></h3>
+        <p class="hint" style="margin:4px 0 12px">
+          탭하면 지명·찜·원픽을 고를 수 있어요. 💬는 선수가 남긴 각오 한마디입니다.</p>
+        <div class="grid-players">
+          ${pool.map((p) => poolCardHtml(p)).join('')}
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3>팀 현황</h3>
+          ${TEAMS.map((t) => {
+            const members = ST.picks.filter((p) => p.team === t.code);
+            return `<div style="margin-top:12px">
+              <div class="row" style="gap:6px">
+                <span class="team-swatch" style="width:14px;height:14px;background:${t.color}"></span>
+                <b style="font-size:14px">${esc(t.name)}</b>
+                <span class="hint">${members.length}/${C.ROSTER_SIZE}</span>
+              </div>
+              <div class="roster-grid" style="grid-template-columns:repeat(3,1fr);margin-top:6px">
+                ${Array.from({ length: C.ROSTER_SIZE }, (_, i) => members[i]
+                  ? `<div class="roster-slot" style="font-size:13px;padding:9px 4px">${esc(members[i].player)}</div>`
+                  : `<div class="roster-slot empty" style="font-size:12px;padding:9px 4px">대기</div>`).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <div class="card">
+          <h3>픽 로그</h3>
+          <div class="log mt">
+            ${ST.picks.length === 0 ? '<p class="hint">아직 픽이 없어요.</p>'
+              : ST.picks.slice().reverse().map((p) => `<div class="log-row">
+                  <span class="log-seq">#${p.seq + 1}</span>
+                  <span style="color:${teamOf(p.team).color};font-weight:800">${esc(teamOf(p.team).name)}</span>
+                  <span class="spacer"></span><b>${esc(p.player)}</b></div>`).join('')}
+          </div>
+          ${ST.picks.length ? `<div class="mt"><button class="btn ghost small" onclick="undo()">방금 픽 취소</button></div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    ${done ? resultCard() : ''}
+    <div class="overlay hidden" id="modal"></div>`;
+}
+
+function poolCardHtml(p) {
+  const wishes = ST.wishes.filter((w) => w.player === p);
+  const pledge = ST.pledges[p];
+  return `<div class="pcard" onclick="openModal('${esc(p)}')">
+    ${esc(p)}
+    ${wishes.length ? `<div class="wish">${wishes.map((w) =>
+      `<span class="wtag" style="background:${w.kind === 'super' ? '#1d1c1d' : teamOf(w.team).color};
+        ${w.kind === 'super' ? 'color:#ECB22E;border:1px solid #ECB22E' : ''}">
+        ${w.kind === 'super' ? '🔥' : ''}${esc(w.coach_name)}</span>`).join('')}</div>` : ''}
+    ${pledge ? `<span class="bubble">💬 ${esc(pledge)}</span>` : ''}
+  </div>`;
+}
+
+function seqBarHtml(order, cur) {
+  const seq = snakeSeq(order);
+  return seq.map((code, i) => {
+    const t = teamOf(code);
+    const past = i < cur;
+    return `<span class="seq-pill ${i === cur ? 'now' : ''}"
+      style="background:${t.color};${past ? 'opacity:.15' : ''}"
+      title="${i + 1}픽 ${esc(t.name)}">${i + 1}</span>`;
+  }).join('');
+}
+
+function resultCard() {
+  return `<div class="card mt">
+    <h3>✅ 18픽이 모두 끝났어요</h3>
+    <p class="hint mt">명단을 눈으로 한 번 확인한 뒤, 마스터가 <b>관리자 화면</b>에서 "결과 공개"를 눌러야
+      선수들에게 가나다순 명단이 공개됩니다. 그 전까지는 아무에게도 보이지 않아요.</p>
+  </div>`;
+}
+
+// ── 지명 모달 ──────────────────────────────────────────
+function openModal(player) {
+  selected = player;
+  const me = ST.coach;
+  const order = ST.draft_order;
+  const nowTeam = order ? snakeTeam(order, ST.cursor) : null;
+  const myTurn = nowTeam && (me.is_master || me.team === nowTeam);
+  const myWish = ST.wishes.find((w) => w.player === player && w.coach === me.id);
+  const pledge = ST.pledges[player];
+
+  document.getElementById('modal').innerHTML = `
+    <div class="modal">
+      <h3>${esc(player)}</h3>
+      ${pledge ? `<p class="hint" style="margin-top:6px">💬 “${esc(pledge)}”</p>` : ''}
+      <div class="stack mt">
+        ${myTurn ? `<button class="btn" onclick="pick()">이 선수 지명하기</button>`
+          : `<p class="hint">지금은 ${esc(teamOf(nowTeam).name)} 차례라 지명할 수 없어요.</p>`}
+        ${me.is_master ? '' : `
+          <button class="btn ghost" onclick="wish('super')"
+            style="background:#1d1c1d;color:#ECB22E;border-color:#ECB22E">
+            ${myWish && myWish.kind === 'super' ? '🔥 원픽 해제' : '🔥 원픽 지정 (코치당 1명)'}</button>
+          <button class="btn ghost" onclick="wish('normal')">
+            ${myWish && myWish.kind === 'normal' ? '👀 찜 해제' : '👀 찜하기'}</button>`}
+        <button class="btn ghost" onclick="closeModal()">닫기</button>
+      </div>
+      <div class="err mt hidden" id="modalErr"></div>
+    </div>`;
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function closeModal() { document.getElementById('modal')?.classList.add('hidden'); }
+
+async function pick() {
+  try { ST = await api.coachPick(PASS, selected); closeModal(); render(); }
+  catch (e) { showModalErr(e.message); }
+}
+
+async function wish(kind) {
+  try { ST = await api.coachWish(PASS, selected, kind); closeModal(); render(); }
+  catch (e) { showModalErr(e.message); }
+}
+
+async function undo() {
+  if (!confirm('방금 지명한 픽을 취소할까요?')) return;
+  try { ST = await api.coachUndo(PASS); render(); }
+  catch (e) { alert(e.message); }
+}
+
+function showModalErr(msg) {
+  const el = document.getElementById('modalErr');
+  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+}
+
+// 카톡으로 다음 팀을 부를 때 쓰는 문구
+function copyHandoff() {
+  const order = ST.draft_order;
+  const next = order ? snakeTeam(order, ST.cursor) : null;
+  const me = ST.coach;
+  const text = next
+    ? `${teamOf(next).name} 코치님, ${me.team ? teamOf(me.team).name + ' ' : ''}픽 끝났습니다! 이제 ${teamOf(next).name} 차례예요 🙏 (${ST.cursor}/18)`
+    : '드래프트가 모두 끝났습니다!';
+  navigator.clipboard?.writeText(text).then(
+    () => alert('복사했어요!\n\n' + text),
+    () => prompt('아래 문구를 복사해 코치방에 붙여넣어 주세요', text)
+  );
+}
+
+// 이전 접속 암호 자동 채움
+const saved = store.get('coachpass');
+if (saved) { document.getElementById('pass').value = saved; }
+</script>
+</body>
+</html>
