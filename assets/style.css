@@ -1,4 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Jua&family=Gothic+A1:wght@400;500;700;800;900&display=swap');
+/* Pretendard — Apple SD Gothic Neo 를 웹에서 대체하기 위해 만들어진 폰트.
+   저장소에 직접 포함해 CDN 장애·차단과 무관하게 항상 같은 글꼴로 보이게 한다.
+   (SIL Open Font License 1.1 — assets/fonts/OFL.txt)
+   애플 기기에서는 아래 폰트 스택의 -apple-system 이 먼저 잡혀 진짜
+   Apple SD Gothic Neo 로 렌더링된다. */
+@font-face { font-family: 'Pretendard'; font-weight: 400; font-display: swap;
+  src: local('Pretendard Regular'), url('fonts/Pretendard-Regular.subset.woff2') format('woff2'); }
+@font-face { font-family: 'Pretendard'; font-weight: 500; font-display: swap;
+  src: local('Pretendard Medium'), url('fonts/Pretendard-Medium.subset.woff2') format('woff2'); }
+@font-face { font-family: 'Pretendard'; font-weight: 600; font-display: swap;
+  src: local('Pretendard SemiBold'), url('fonts/Pretendard-SemiBold.subset.woff2') format('woff2'); }
+@font-face { font-family: 'Pretendard'; font-weight: 700; font-display: swap;
+  src: local('Pretendard Bold'), url('fonts/Pretendard-Bold.subset.woff2') format('woff2'); }
+@font-face { font-family: 'Pretendard'; font-weight: 800; font-display: swap;
+  src: local('Pretendard ExtraBold'), url('fonts/Pretendard-ExtraBold.subset.woff2') format('woff2'); }
 
 /* ─────────────────────────────────────────────
    FC풉살 드래프트 — 동글동글 · 통통 튀는 디자인
@@ -26,6 +40,9 @@
   --surface: #ffffff;
   --hover: #faf7fc;
 
+  --font: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard',
+          system-ui, 'Segoe UI', 'Malgun Gothic', sans-serif;
+
   --radius: 22px;
   --radius-lg: 28px;
   --radius-sm: 16px;
@@ -42,19 +59,20 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: 'Gothic A1', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-family: var(--font);
   font-size: 15.5px;
-  line-height: 1.6;
+  line-height: 1.58;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
 }
 
 h1, h2, h3, h4, .display {
   margin: 0;
-  font-family: 'Jua', 'Gothic A1', sans-serif;
-  font-weight: 400;
-  letter-spacing: .01em;
-  line-height: 1.35;
+  font-family: var(--font);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.32;
 }
 button, input, textarea { font-family: inherit; }
 
@@ -84,7 +102,7 @@ button, input, textarea { font-family: inherit; }
 }
 
 .ws-head { padding: 18px 18px 14px; }
-.ws-name { color: #fff; font-family: 'Jua', sans-serif; font-size: 19px; }
+.ws-name { color: #fff; font-weight: 700; font-size: 19px; }
 .ws-sub { font-size: 12.5px; color: var(--sidebar-text); margin-top: 1px; }
 
 .channels { padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
@@ -106,7 +124,7 @@ button, input, textarea { font-family: inherit; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 .ch-head { padding: 18px 22px 14px; position: sticky; top: 0; background: var(--bg); z-index: 20; }
-.ch-title { font-family: 'Jua', sans-serif; font-size: 21px; display: flex; align-items: center; gap: 6px; }
+.ch-title { font-weight: 700; font-size: 21px; display: flex; align-items: center; gap: 6px; }
 .ch-desc { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
 
 .pane { padding: 4px 22px 40px; max-width: 800px; width: 100%; }
@@ -138,7 +156,7 @@ button, input, textarea { font-family: inherit; }
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   background: var(--green); color: #fff; border: 0;
   padding: 13px 22px; border-radius: var(--pill);
-  font-family: 'Jua', sans-serif; font-size: 16px; cursor: pointer;
+  font-weight: 700; font-size: 16px; cursor: pointer;
   box-shadow: 0 4px 0 rgba(0, 122, 90, .28); transition: .12s;
 }
 .btn:hover:not(:disabled) { background: var(--green-hover); transform: translateY(-1px); }
@@ -175,11 +193,11 @@ button, input, textarea { font-family: inherit; }
 .avatar {
   width: 42px; height: 42px; border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Jua', sans-serif; color: #fff; font-size: 17px;
+  font-weight: 700; color: #fff; font-size: 17px;
 }
 .msg-body { min-width: 0; flex: 1; }
 .msg-head { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
-.msg-name { font-family: 'Jua', sans-serif; font-size: 15.5px; }
+.msg-name { font-weight: 700; font-size: 15.5px; }
 .msg-time { font-size: 12px; color: var(--faint); }
 .msg-text {
   font-size: 14.5px; margin-top: 3px; word-break: break-word; white-space: pre-wrap;
@@ -191,18 +209,18 @@ button, input, textarea { font-family: inherit; }
 .pcard {
   padding: 12px 6px 14px; border: 2px solid var(--border); border-radius: var(--radius);
   background: #fff; cursor: pointer; text-align: center;
-  font-family: 'Jua', sans-serif; font-size: 16px;
+  font-weight: 700; font-size: 16px;
   transition: .15s; position: relative;
 }
 .pcard:hover:not(.disabled) { border-color: var(--blue); transform: translateY(-3px); box-shadow: var(--shadow); }
 .pcard.sel { background: var(--aubergine-dark); border-color: var(--aubergine-dark); color: #fff; }
 .pcard.disabled { opacity: .45; cursor: not-allowed; background: #f7f5f8; }
 .pcard.disabled .chr-bounce { animation: none; }
-.pcard .done { display: block; font-family: 'Gothic A1'; font-size: 10.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+.pcard .done { display: block; font-weight: 700; font-size: 10.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
 .pcard .wish { display: flex; gap: 3px; justify-content: center; margin-top: 5px; flex-wrap: wrap; }
-.pcard .wtag { font-family: 'Gothic A1'; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: var(--pill); color: #fff; }
+.pcard .wtag { font-weight: 700; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: var(--pill); color: #fff; }
 .pcard .bubble {
-  display: block; margin-top: 7px; font-family: 'Gothic A1'; font-size: 11px; font-weight: 600;
+  display: block; margin-top: 7px; font-weight: 700; font-size: 11px; font-weight: 600;
   color: var(--muted); background: #f6f2f9; border-radius: 12px 12px 12px 3px; padding: 6px 9px; line-height: 1.35;
 }
 
@@ -216,10 +234,10 @@ button, input, textarea { font-family: inherit; }
 .team-opt:hover { background: var(--hover); transform: translateY(-2px); }
 .team-opt.sel { border-color: currentColor; box-shadow: var(--shadow); }
 .team-swatch { width: 40px; height: 40px; border-radius: 50%; flex: none; }
-.team-opt .tname { font-family: 'Jua', sans-serif; font-size: 17px; color: var(--ink); }
+.team-opt .tname { font-weight: 700; font-size: 17px; color: var(--ink); }
 .team-opt .tcoach { font-size: 12.5px; color: var(--muted); }
 .team-opt .pick-no {
-  margin-left: auto; font-family: 'Jua', sans-serif; font-size: 13px; padding: 6px 13px;
+  margin-left: auto; font-weight: 700; font-size: 13px; padding: 6px 13px;
   border-radius: var(--pill); background: #f2edf6; color: var(--muted);
 }
 
@@ -237,7 +255,7 @@ button, input, textarea { font-family: inherit; }
   border-radius: var(--radius-lg); padding: 32px 22px; color: #fff; text-align: center;
 }
 .reveal-rank { font-size: 13px; font-weight: 800; letter-spacing: .12em; color: var(--yellow); }
-.reveal-team { font-family: 'Jua', sans-serif; font-size: 32px; margin: 10px 0 6px; }
+.reveal-team { font-weight: 700; font-size: 32px; margin: 10px 0 6px; }
 .reveal-score { font-size: 14px; opacity: .85; }
 .reveal-card {
   border-radius: var(--radius); padding: 18px 20px; margin-top: 12px; color: #fff;
@@ -246,25 +264,25 @@ button, input, textarea { font-family: inherit; }
 }
 @keyframes popIn { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
 .reveal-card .no { font-size: 30px; }
-.reveal-card .nm { font-family: 'Jua', sans-serif; font-size: 21px; }
-.reveal-card .sc { margin-left: auto; font-family: 'Jua', sans-serif; font-size: 18px; opacity: .95; }
+.reveal-card .nm { font-weight: 700; font-size: 21px; }
+.reveal-card .sc { margin-left: auto; font-weight: 700; font-size: 18px; opacity: .95; }
 
 /* ── 로스터 ───────────────────────────────── */
 .roster-head { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; }
 .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
 .roster-slot {
   padding: 12px 6px 14px; border-radius: var(--radius); text-align: center;
-  font-family: 'Jua', sans-serif; font-size: 16px; background: #f7f4fa; color: var(--ink);
+  font-weight: 700; font-size: 16px; background: #f7f4fa; color: var(--ink);
 }
 .roster-slot.empty { color: #c9c1d0; background: #fbfafc; border: 2px dashed var(--border-strong); }
 .roster-slot.me { background: #fff6dd; box-shadow: 0 0 0 2.5px var(--yellow); }
 
 /* ── 승률 바 ──────────────────────────────── */
 .prob-row { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
-.prob-name { width: 100px; font-family: 'Jua', sans-serif; font-size: 14.5px; flex: none; }
+.prob-name { width: 100px; font-weight: 700; font-size: 14.5px; flex: none; }
 .prob-track { flex: 1; height: 26px; background: #f0ebf4; border-radius: var(--pill); overflow: hidden; }
 .prob-track > i { display: block; height: 100%; border-radius: var(--pill); transition: width .8s cubic-bezier(.34, 1.56, .64, 1); }
-.prob-val { width: 50px; text-align: right; font-family: 'Jua', sans-serif; font-size: 15px; }
+.prob-val { width: 50px; text-align: right; font-weight: 700; font-size: 15px; }
 
 /* ── 코치 보드 ─────────────────────────────── */
 .turn-banner {
@@ -273,11 +291,11 @@ button, input, textarea { font-family: inherit; }
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: var(--shadow);
 }
 .turn-banner.mine { background: linear-gradient(135deg, #00b98a, #00876a); }
-.turn-banner .big { font-family: 'Jua', sans-serif; font-size: 21px; }
+.turn-banner .big { font-weight: 700; font-size: 21px; }
 .seq-bar { display: flex; gap: 6px; align-items: center; overflow-x: auto; padding: 14px 2px; }
 .seq-pill {
   min-width: 30px; text-align: center; padding: 6px 0; border-radius: var(--pill);
-  font-family: 'Jua', sans-serif; font-size: 13px; color: #fff; flex: none; opacity: .3; transition: .2s;
+  font-weight: 700; font-size: 13px; color: #fff; flex: none; opacity: .3; transition: .2s;
 }
 .seq-pill.now { opacity: 1; transform: scale(1.22); box-shadow: var(--shadow); }
 
@@ -286,7 +304,7 @@ button, input, textarea { font-family: inherit; }
 
 .log { max-height: 280px; overflow-y: auto; font-size: 13.5px; }
 .log-row { display: flex; gap: 9px; align-items: center; padding: 7px 0; border-bottom: 1.5px solid var(--border); }
-.log-seq { color: var(--faint); font-family: 'Jua', sans-serif; width: 30px; flex: none; }
+.log-seq { color: var(--faint); font-weight: 700; width: 30px; flex: none; }
 
 /* ── 모달 ─────────────────────────────────── */
 .overlay {

@@ -176,7 +176,7 @@ function matchCard() {
       3경기가 모두 입력되면 예측 적중자가 발표돼요.</p>
     ${MATCHES.map((m) => `
       <div class="row" style="padding:10px 0;border-bottom:1.5px solid var(--border)">
-        <span style="flex:1;text-align:right;font-family:Jua">${esc(teamOf(m.home).name)}</span>
+        <span style="flex:1;text-align:right;font-weight:700">${esc(teamOf(m.home).name)}</span>
         <input class="input" id="hs${m.id}" type="number" min="0" inputmode="numeric"
                style="width:64px;text-align:center;padding:8px"
                value="${m.home_score == null ? '' : m.home_score}">
@@ -184,7 +184,7 @@ function matchCard() {
         <input class="input" id="as${m.id}" type="number" min="0" inputmode="numeric"
                style="width:64px;text-align:center;padding:8px"
                value="${m.away_score == null ? '' : m.away_score}">
-        <span style="flex:1;font-family:Jua">${esc(teamOf(m.away).name)}</span>
+        <span style="flex:1;font-weight:700">${esc(teamOf(m.away).name)}</span>
         <button class="btn small" onclick="saveScore(${m.id})">저장</button>
       </div>`).join('')}
     <div class="hint mt">입력을 되돌리려면 두 칸을 모두 비우고 저장하세요.</div>

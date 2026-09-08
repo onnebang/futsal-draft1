@@ -125,7 +125,7 @@
       ${kitPattern(patKind, trim, uid)}
       <rect x="28" y="37" width="8" height="3.5" rx="1.5" fill="${trim}"/>
       ${opts.number ? `<text x="32" y="59" text-anchor="middle" font-size="11"
-        font-family="Jua, sans-serif" fill="${trim}">${opts.number}</text>` : ''}
+        font-family="-apple-system, Pretendard, sans-serif" font-weight="700" fill="${trim}">${opts.number}</text>` : ''}
 
       ${/* 얼굴 */ ''}
       <rect x="21" y="4" width="22" height="27" rx="6" fill="${skin}"/>

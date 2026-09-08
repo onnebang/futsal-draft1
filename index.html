@@ -547,12 +547,12 @@ function renderMatch(pane) {
         const hw = played && m.home_score > m.away_score;
         const aw = played && m.away_score > m.home_score;
         return `<div class="row" style="padding:11px 0;border-bottom:1.5px solid var(--border)">
-          <span style="flex:1;text-align:right;font-family:Jua;font-size:15px;${hw ? '' : 'opacity:.6'}">${esc(h.name)}</span>
+          <span style="flex:1;text-align:right;font-weight:700;font-size:15px;${hw ? '' : 'opacity:.6'}">${esc(h.name)}</span>
           <span class="team-swatch" style="width:14px;height:14px;background:${h.color}"></span>
-          <span style="font-family:Jua;font-size:17px;min-width:64px;text-align:center">
+          <span style="font-weight:700;font-size:17px;min-width:64px;text-align:center">
             ${played ? `${m.home_score} : ${m.away_score}` : '<span class="hint">vs</span>'}</span>
           <span class="team-swatch" style="width:14px;height:14px;background:${a.color}"></span>
-          <span style="flex:1;font-family:Jua;font-size:15px;${aw ? '' : 'opacity:.6'}">${esc(a.name)}</span>
+          <span style="flex:1;font-weight:700;font-size:15px;${aw ? '' : 'opacity:.6'}">${esc(a.name)}</span>
         </div>`;
       }).join('')}
     </div>
@@ -572,13 +572,13 @@ function renderMatch(pane) {
               const t = teamOf(r.code);
               return `<tr style="border-top:1.5px solid var(--border)">
                 <td style="padding:9px 4px">
-                  <span style="font-family:Jua">${i + 1}. ${esc(t.name)}</span></td>
+                  <span style="font-weight:700">${i + 1}. ${esc(t.name)}</span></td>
                 <td style="text-align:center">${r.played}</td>
                 <td style="text-align:center">${r.win}</td>
                 <td style="text-align:center">${r.draw}</td>
                 <td style="text-align:center">${r.loss}</td>
                 <td style="text-align:center">${r.gd > 0 ? '+' : ''}${r.gd}</td>
-                <td style="text-align:center;font-family:Jua;font-size:15px">${r.pts}</td>
+                <td style="text-align:center;font-weight:700;font-size:15px">${r.pts}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -602,13 +602,13 @@ function winnersCardHtml() {
   return `<div class="card">
     <h3>🎯 예측 적중자</h3>
     <p class="hint" style="margin:4px 0 12px">총 ${S.predictions.length}명이 예측에 참여했어요.</p>
-    <div style="font-family:Jua;font-size:15px;margin-bottom:6px">
+    <div style="font-weight:700;font-size:15px;margin-bottom:6px">
       순위 3개 모두 적중 <span style="color:var(--green)">${exact.length}명</span></div>
     ${exact.length
       ? `<div class="row">${exact.map((p) =>
           `<span class="chip" style="background:rgba(0,163,122,.12);color:var(--green)">${esc(p.nickname || '익명')}</span>`).join('')}</div>`
       : '<p class="hint">아무도 맞히지 못했어요 😅</p>'}
-    <div style="font-family:Jua;font-size:15px;margin:16px 0 6px">
+    <div style="font-weight:700;font-size:15px;margin:16px 0 6px">
       우승팀 적중 <span style="color:var(--blue)">${champOnly.length}명</span></div>
     ${champOnly.length
       ? `<div class="row">${champOnly.map((p) =>
