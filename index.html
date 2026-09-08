@@ -167,7 +167,7 @@ function renderVote(pane) {
           const voted = S.marks.includes(p);
           return `<div class="pcard ${voted ? 'disabled' : ''} ${voteForm.name === p ? 'sel' : ''}"
                     ${voted ? '' : `onclick="pickName('${esc(p)}')"`}>
-                    <span class="chr-wrap">${charSvg(p, { size: 46 })}</span>
+                    <span class="chr-wrap">${charSvg(p, { size: 44 })}</span>
                     ${esc(p)}${voted ? '<span class="done">투표 완료</span>' : ''}
                   </div>`;
         }).join('')}
@@ -364,7 +364,7 @@ function msgHtml(name, body, tag, time, useChar) {
   return `<div class="msg">
     ${useChar === false
       ? `<div class="avatar" style="background:${colorFor(name)}">${esc(name.slice(0, 1))}</div>`
-      : charSvg(name, { size: 44 })}
+      : charSvg(name, { size: 34 })}
     <div class="msg-body">
       <div class="msg-head"><span class="msg-name">${esc(name)}</span>
         ${tag ? `<span class="msg-tag">${esc(tag)}</span>` : ''}
@@ -393,7 +393,7 @@ function renderTeam(pane) {
       </div>
       <div class="roster-grid">
         ${members.map((m) => `<div class="roster-slot ${m === me ? 'me' : ''}">
-            <span class="chr-wrap">${charSvg(m, { size: 52, jersey: t.color })}</span>${esc(m)}
+            <span class="chr-wrap">${charSvg(m, { size: 46, jersey: t.color })}</span>${esc(m)}
           </div>`).join('')}
       </div>
     </div>`;

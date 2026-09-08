@@ -196,7 +196,7 @@ function poolCardHtml(p) {
   const wishes = ST.wishes.filter((w) => w.player === p);
   const pledge = ST.pledges[p];
   return `<div class="pcard" onclick="openModal('${esc(p)}')">
-    <span class="chr-wrap">${charSvg(p, { size: 48 })}</span>
+    <span class="chr-wrap">${charSvg(p, { size: 42 })}</span>
     ${esc(p)}
     ${wishes.length ? `<div class="wish">${wishes.map((w) =>
       `<span class="wtag" style="background:${w.kind === 'super' ? '#1d1c1d' : teamOf(w.team).color};
@@ -237,7 +237,7 @@ function openModal(player) {
 
   document.getElementById('modal').innerHTML = `
     <div class="modal">
-      <div class="chr-wrap">${charSvg(player, { size: 84 })}</div>
+      <div class="chr-wrap">${charSvg(player, { size: 72 })}</div>
       <h3 class="center">${esc(player)}</h3>
       ${pledge ? `<p class="hint center" style="margin-top:6px">💬 “${esc(pledge)}”</p>` : ''}
       <div class="stack mt">

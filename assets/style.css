@@ -63,10 +63,10 @@ button, input, textarea { font-family: inherit; }
 .chr-bounce { animation: chrBounce 1.8s ease-in-out infinite; transform-origin: 50% 92%; }
 @keyframes chrBounce {
   0%, 100% { transform: translateY(0) scale(1, 1); }
-  20%      { transform: translateY(-9%) scale(.97, 1.05); }
-  40%      { transform: translateY(0) scale(1.05, .93); }
-  55%      { transform: translateY(-3%) scale(.99, 1.02); }
-  70%      { transform: translateY(0) scale(1.02, .98); }
+  22%      { transform: translateY(-7%) scale(.985, 1.025); }
+  42%      { transform: translateY(0) scale(1.03, .96); }
+  58%      { transform: translateY(-2.5%) scale(.995, 1.01); }
+  74%      { transform: translateY(0) scale(1.012, .99); }
 }
 .chr-wrap { display: flex; justify-content: center; }
 @media (prefers-reduced-motion: reduce) { .chr-bounce { animation: none; } }
