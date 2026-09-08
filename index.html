@@ -41,10 +41,12 @@
 </div>
 
 <script src="assets/config.js"></script>
+<script src="assets/character.js"></script>
 <script src="assets/app.js"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, colorFor, esc, timeAgo, shuffled, confetti } = window.FDApp;
 const C = window.FD;
+const { charSvg } = window.FDChar;
 
 const CHANNELS = [
   { id: 'vote',    name: '투표',      min: 1, desc: '가고 싶은 팀에 투표하면 드래프트 순서가 정해져요' },
@@ -165,6 +167,7 @@ function renderVote(pane) {
           const voted = S.marks.includes(p);
           return `<div class="pcard ${voted ? 'disabled' : ''} ${voteForm.name === p ? 'sel' : ''}"
                     ${voted ? '' : `onclick="pickName('${esc(p)}')"`}>
+                    <span class="chr-wrap">${charSvg(p, { size: 46 })}</span>
                     ${esc(p)}${voted ? '<span class="done">투표 완료</span>' : ''}
                   </div>`;
         }).join('')}
@@ -357,9 +360,11 @@ function renderDraft(pane) {
     </div>`;
 }
 
-function msgHtml(name, body, tag, time) {
+function msgHtml(name, body, tag, time, useChar) {
   return `<div class="msg">
-    <div class="avatar" style="background:${colorFor(name)}">${esc(name.slice(0, 1))}</div>
+    ${useChar === false
+      ? `<div class="avatar" style="background:${colorFor(name)}">${esc(name.slice(0, 1))}</div>`
+      : charSvg(name, { size: 44 })}
     <div class="msg-body">
       <div class="msg-head"><span class="msg-name">${esc(name)}</span>
         ${tag ? `<span class="msg-tag">${esc(tag)}</span>` : ''}
@@ -387,7 +392,9 @@ function renderTeam(pane) {
           <span class="hint">${esc(t.coaches)} 코치 · ${members.length}명</span></span>
       </div>
       <div class="roster-grid">
-        ${members.map((m) => `<div class="roster-slot ${m === me ? 'me' : ''}">${esc(m)}</div>`).join('')}
+        ${members.map((m) => `<div class="roster-slot ${m === me ? 'me' : ''}">
+            <span class="chr-wrap">${charSvg(m, { size: 52, jersey: t.color })}</span>${esc(m)}
+          </div>`).join('')}
       </div>
     </div>`;
   }).join('') + `
@@ -536,7 +543,7 @@ function renderCheer(pane) {
       <h3># ${esc(teamOf(S.cheerTeam).name)}</h3>
       <div class="mt">
         ${list.length === 0 ? '<p class="hint">첫 응원을 남겨보세요!</p>'
-          : list.map((c) => msgHtml(c.nickname, c.body, null, timeAgo(c.created_at))).join('')}
+          : list.map((c) => msgHtml(c.nickname, c.body, null, timeAgo(c.created_at), false)).join('')}
       </div>
     </div>`;
 }

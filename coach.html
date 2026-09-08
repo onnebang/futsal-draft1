@@ -61,10 +61,12 @@
 </div>
 
 <script src="assets/config.js"></script>
+<script src="assets/character.js"></script>
 <script src="assets/app.js"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, colorFor, esc } = window.FDApp;
 const C = window.FD;
+const { charSvg } = window.FDChar;
 
 let PASS = null;
 let ST = null;
@@ -194,6 +196,7 @@ function poolCardHtml(p) {
   const wishes = ST.wishes.filter((w) => w.player === p);
   const pledge = ST.pledges[p];
   return `<div class="pcard" onclick="openModal('${esc(p)}')">
+    <span class="chr-wrap">${charSvg(p, { size: 48 })}</span>
     ${esc(p)}
     ${wishes.length ? `<div class="wish">${wishes.map((w) =>
       `<span class="wtag" style="background:${w.kind === 'super' ? '#1d1c1d' : teamOf(w.team).color};
@@ -234,8 +237,9 @@ function openModal(player) {
 
   document.getElementById('modal').innerHTML = `
     <div class="modal">
-      <h3>${esc(player)}</h3>
-      ${pledge ? `<p class="hint" style="margin-top:6px">💬 “${esc(pledge)}”</p>` : ''}
+      <div class="chr-wrap">${charSvg(player, { size: 84 })}</div>
+      <h3 class="center">${esc(player)}</h3>
+      ${pledge ? `<p class="hint center" style="margin-top:6px">💬 “${esc(pledge)}”</p>` : ''}
       <div class="stack mt">
         ${myTurn ? `<button class="btn" onclick="pick()">이 선수 지명하기</button>`
           : `<p class="hint">지금은 ${esc(teamOf(nowTeam).name)} 차례라 지명할 수 없어요.</p>`}
