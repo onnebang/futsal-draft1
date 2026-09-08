@@ -55,11 +55,13 @@ const CHANNELS = [
   { id: 'team',    name: '우리팀',    min: 4, desc: '확정된 3팀 명단 (가나다순)' },
   { id: 'predict', name: '예측',      min: 5, desc: '우승 팀을 예측하고 승률을 확인하세요' },
   { id: 'cheer',   name: '응원',      min: 4, desc: '팀별 응원 한마디' },
+  { id: 'match',   name: '경기',      min: 6, desc: '12/19 매치 결과 · 순위표 · 예측 적중자' },
 ];
 
 let S = {
   cfg: null, teams: [], players: [], marks: [], pledges: {},
   rosters: [], tally: null, comments: [], predictions: [], predictMarks: [],
+  matches: [], standings: [],
   active: null, cheerTeam: 'A', celebrated: false,
 };
 
@@ -81,6 +83,9 @@ async function load() {
   if (pi >= 5) {
     try { S.predictions = await api.predictions(); S.predictMarks = await api.predictMarks(); } catch { /* 무시 */ }
   }
+  if (pi >= 6) {
+    try { S.matches = await api.matches(); S.standings = await api.standings(); } catch { /* 무시 */ }
+  }
 
   if (!S.active) S.active = defaultChannel();
   render();
@@ -88,7 +93,7 @@ async function load() {
 
 function defaultChannel() {
   const pi = phaseIdx(S.cfg.phase);
-  const map = { 1: 'vote', 2: 'reveal', 3: 'draft', 4: 'team', 5: 'predict', 6: 'predict' };
+  const map = { 1: 'vote', 2: 'reveal', 3: 'draft', 4: 'team', 5: 'predict', 6: 'match' };
   return map[pi] || 'vote';
 }
 
@@ -124,8 +129,8 @@ function render() {
       <p class="hint mt">드래프트 준비 중이에요. 카톡 공지를 기다려주세요 🙏</p></div>`;
     return;
   }
-  ({ vote: renderVote, reveal: renderReveal, draft: renderDraft,
-     team: renderTeam, predict: renderPredict, cheer: renderCheer }[ch.id])(pane);
+  ({ vote: renderVote, reveal: renderReveal, draft: renderDraft, team: renderTeam,
+     predict: renderPredict, cheer: renderCheer, match: renderMatch }[ch.id])(pane);
 }
 
 function go(id) { S.active = id; render(); }
@@ -518,6 +523,98 @@ function winProbabilities() {
     wins[leaders[Math.floor(Math.random() * leaders.length)]]++;
   }
   return Object.fromEntries(codes.map((c) => [c, wins[c] / SIMS]));
+}
+
+// ── #경기 ──────────────────────────────────────────────
+function renderMatch(pane) {
+  const done = S.matches.filter((m) => m.home_score != null).length;
+  const all = done === S.matches.length && done > 0;
+  const champ = all && S.standings.length ? S.standings[0].code : null;
+
+  pane.innerHTML = `
+    ${champ ? `<div class="reveal-stage">
+      <div class="reveal-rank">2026 하반기 내부매치</div>
+      <div class="reveal-team">🏆 ${esc(teamOf(champ).name)}</div>
+      <div class="reveal-score">${esc(teamOf(champ).coaches)} 코치 · 우승을 축하합니다!</div>
+    </div>` : ''}
+
+    <div class="card">
+      <h3>경기 결과</h3>
+      <p class="hint" style="margin:4px 0 12px">${done} / ${S.matches.length}경기 종료 · 5:5 · 12분</p>
+      ${S.matches.map((m) => {
+        const h = teamOf(m.home), a = teamOf(m.away);
+        const played = m.home_score != null;
+        const hw = played && m.home_score > m.away_score;
+        const aw = played && m.away_score > m.home_score;
+        return `<div class="row" style="padding:11px 0;border-bottom:1.5px solid var(--border)">
+          <span style="flex:1;text-align:right;font-family:Jua;font-size:15px;${hw ? '' : 'opacity:.6'}">${esc(h.name)}</span>
+          <span class="team-swatch" style="width:14px;height:14px;background:${h.color}"></span>
+          <span style="font-family:Jua;font-size:17px;min-width:64px;text-align:center">
+            ${played ? `${m.home_score} : ${m.away_score}` : '<span class="hint">vs</span>'}</span>
+          <span class="team-swatch" style="width:14px;height:14px;background:${a.color}"></span>
+          <span style="flex:1;font-family:Jua;font-size:15px;${aw ? '' : 'opacity:.6'}">${esc(a.name)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="card">
+      <h3>순위표</h3>
+      <div class="table-wrap mt" style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+          <thead><tr style="color:var(--muted);font-size:12px">
+            <th style="text-align:left;padding:6px 4px">팀</th>
+            <th style="padding:6px 4px">경기</th><th style="padding:6px 4px">승</th>
+            <th style="padding:6px 4px">무</th><th style="padding:6px 4px">패</th>
+            <th style="padding:6px 4px">득실</th><th style="padding:6px 4px">승점</th>
+          </tr></thead>
+          <tbody>
+            ${S.standings.map((r, i) => {
+              const t = teamOf(r.code);
+              return `<tr style="border-top:1.5px solid var(--border)">
+                <td style="padding:9px 4px">
+                  <span style="font-family:Jua">${i + 1}. ${esc(t.name)}</span></td>
+                <td style="text-align:center">${r.played}</td>
+                <td style="text-align:center">${r.win}</td>
+                <td style="text-align:center">${r.draw}</td>
+                <td style="text-align:center">${r.loss}</td>
+                <td style="text-align:center">${r.gd > 0 ? '+' : ''}${r.gd}</td>
+                <td style="text-align:center;font-family:Jua;font-size:15px">${r.pts}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    ${all ? winnersCardHtml() : `<div class="card">
+      <h3>예측 적중자</h3>
+      <p class="hint mt">모든 경기가 끝나면 적중자를 발표할게요 🎯</p></div>`}`;
+
+  if (champ && !S.celebrated) { S.celebrated = true; confetti(); }
+}
+
+// 최종 순위를 정확히 맞힌 사람 / 우승팀만 맞힌 사람
+function winnersCardHtml() {
+  const order = S.standings.map((r) => r.code);
+  const exact = S.predictions.filter((p) => p.rank1 === order[0] && p.rank2 === order[1] && p.rank3 === order[2]);
+  const champOnly = S.predictions.filter((p) => p.rank1 === order[0] && !exact.includes(p));
+
+  return `<div class="card">
+    <h3>🎯 예측 적중자</h3>
+    <p class="hint" style="margin:4px 0 12px">총 ${S.predictions.length}명이 예측에 참여했어요.</p>
+    <div style="font-family:Jua;font-size:15px;margin-bottom:6px">
+      순위 3개 모두 적중 <span style="color:var(--green)">${exact.length}명</span></div>
+    ${exact.length
+      ? `<div class="row">${exact.map((p) =>
+          `<span class="chip" style="background:rgba(0,163,122,.12);color:var(--green)">${esc(p.nickname || '익명')}</span>`).join('')}</div>`
+      : '<p class="hint">아무도 맞히지 못했어요 😅</p>'}
+    <div style="font-family:Jua;font-size:15px;margin:16px 0 6px">
+      우승팀 적중 <span style="color:var(--blue)">${champOnly.length}명</span></div>
+    ${champOnly.length
+      ? `<div class="row">${champOnly.map((p) =>
+          `<span class="chip">${esc(p.nickname || '익명')}</span>`).join('')}</div>`
+      : '<p class="hint">해당자가 없어요.</p>'}
+  </div>`;
 }
 
 // ── #응원 ──────────────────────────────────────────────

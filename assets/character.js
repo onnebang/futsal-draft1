@@ -10,6 +10,10 @@
   const BOOT = ['#E4E6E9', '#1F1F1F', '#F2B705', '#E0333F', '#22A06B', '#EE7B30'];
   const BAND = ['#F2B705', '#E24A8B', '#ECEDEF', '#22A06B'];
 
+  // 키가 커서 프레임을 뚫고 나가는 선수 — 얼굴 윗부분이 잘린 채로 보인다
+  // (값 = 확대 배율. 바닥을 기준으로 커지므로 발은 그대로, 머리만 위로 넘어간다)
+  const TALL = { '다이': 1.25 };
+
   function hash(str) {
     let h = 2166136261;
     for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -88,11 +92,15 @@
     const band = BAND[(h >>> 21) % BAND.length];
     const socks = ((h >>> 23) % 2) ? kit : trim;
     const delay = ((h >>> 25) % 12) / 12; // 다 같이 튀지 않도록 시작을 흩뜨림
+    const tall = opts.tall || TALL[name] || 1;
+    // 바닥(32,120)을 축으로 확대 → 발은 제자리, 머리는 프레임 위로 넘어가 잘린다
+    const open = tall > 1 ? `<g transform="translate(32,120) scale(${tall}) translate(-32,-120)">` : '';
+    const close = tall > 1 ? '</g>' : '';
 
-    return `<svg class="chr ${opts.bounce === false ? '' : 'chr-bounce'}" viewBox="0 0 64 120"
+    return `<svg class="chr ${tall > 1 ? 'chr-crop ' : ''}${opts.bounce === false ? '' : 'chr-bounce'}" viewBox="0 0 64 120"
       width="${size}" height="${Math.round(size * 120 / 64)}" style="animation-delay:${delay}s" aria-hidden="true">
       <defs><clipPath id="${uid}"><rect x="17" y="37" width="30" height="32" rx="3.5"/></clipPath></defs>
-
+      ${open}
       ${/* 다리 · 양말 · 축구화 */ ''}
       <rect x="20" y="81" width="8.5" height="15" fill="${skin}"/>
       <rect x="35.5" y="81" width="8.5" height="15" fill="${skin}"/>
@@ -124,6 +132,7 @@
       ${hair(hairKind, hairC, band)}
       <circle cx="27.5" cy="21.5" r="1.9" fill="#241F1E"/>
       <circle cx="36.5" cy="21.5" r="1.9" fill="#241F1E"/>
+      ${close}
     </svg>`;
   }
 

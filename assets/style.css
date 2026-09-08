@@ -60,6 +60,7 @@ button, input, textarea { font-family: inherit; }
 
 /* ── 통통 튀는 캐릭터 ──────────────────────── */
 .chr { display: block; overflow: visible; }
+.chr-crop { overflow: hidden; } /* 키 큰 선수 — 머리가 프레임 위로 잘린다 */
 .chr-bounce { animation: chrBounce 1.8s ease-in-out infinite; transform-origin: 50% 92%; }
 @keyframes chrBounce {
   0%, 100% { transform: translateY(0) scale(1, 1); }

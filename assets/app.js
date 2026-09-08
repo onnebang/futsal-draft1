@@ -90,14 +90,24 @@
       { rank1: 'B', rank2: 'A', rank3: 'C', nickname: '풉살러3' },
     ] : [],
     predictMarks: [],
+    matches: demoPhase === 'MATCH'
+      ? [{ id: 1, home: 'A', away: 'B', home_score: 3, away_score: 1 },
+         { id: 2, home: 'B', away: 'C', home_score: 2, away_score: 2 },
+         { id: 3, home: 'C', away: 'A', home_score: 0, away_score: 1 }]
+      : [{ id: 1, home: 'A', away: 'B', home_score: null, away_score: null },
+         { id: 2, home: 'B', away: 'C', home_score: null, away_score: null },
+         { id: 3, home: 'C', away: 'A', home_score: null, away_score: null }],
 
     // 코치 보드 리허설용 상태
     coachState() {
       const picks = ['해수', '다이', '은재', '이지', '서윤', '가은', '나영'].map((p, i) => ({
         seq: i, team: snakeTeam(['A', 'B', 'C'], i), player: p, by: 'demo',
       })).slice(0, this.config.progress_cursor);
+      const asMaster = /admin/.test(location.pathname);
       return {
-        coach: { id: 'mh', name: '민호', team: 'A', is_master: false },
+        coach: asMaster
+          ? { id: 'master', name: '마스터', team: null, is_master: true }
+          : { id: 'mh', name: '민호', team: 'A', is_master: false },
         phase: this.config.phase,
         reveal_step: this.config.reveal_step,
         draft_order: this.config.draft_order,
@@ -121,6 +131,21 @@
       const second = demo.ballots.filter((b) => b[1] === t.code).length;
       return { code: t.code, first, second, score: first * 3 + second };
     });
+  }
+
+  function demoStandings() {
+    const row = {};
+    demo.teams.forEach((t) => { row[t.code] = { code: t.code, played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0 }; });
+    demo.matches.filter((m) => m.home_score != null).forEach((m) => {
+      [[m.home, m.home_score, m.away_score], [m.away, m.away_score, m.home_score]].forEach(([c, gf, ga]) => {
+        const r = row[c];
+        r.played++; r.gf += gf; r.ga += ga;
+        if (gf > ga) r.win++; else if (gf === ga) r.draw++; else r.loss++;
+      });
+    });
+    return Object.values(row)
+      .map((r) => ({ ...r, gd: r.gf - r.ga, pts: r.win * 3 + r.draw }))
+      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
   }
 
   if (DEMO && demoPhase !== 'VOTE') {
@@ -219,6 +244,25 @@
       return rpc('submit_comment', { p_team: team, p_nick: nick, p_body: body });
     },
 
+    async matches() {
+      if (DEMO) return demo.matches.slice();
+      return rest('draft_matches?select=id,home,away,home_score,away_score&order=id');
+    },
+
+    async standings() {
+      if (DEMO) return demoStandings();
+      return rpc('standings', {});
+    },
+
+    masterSetScore(pass, matchId, home, away) {
+      if (DEMO) {
+        const m = demo.matches.find((x) => x.id === matchId);
+        if (m) { m.home_score = home; m.away_score = away; }
+        return Promise.resolve({ ok: true });
+      }
+      return rpc('master_set_score', { p_passcode: pass, p_match: matchId, p_home: home, p_away: away });
+    },
+
     // ── 코치용 (암호 게이트) ────────────────────────────
     coachState: (pass) => (DEMO ? Promise.resolve(demo.coachState()) : rpc('coach_state', { p_passcode: pass })),
 
@@ -242,12 +286,37 @@
     coachWish: (pass, player, kind) =>
       (DEMO ? Promise.resolve(demo.coachState()) : rpc('coach_wish', { p_passcode: pass, p_player: player, p_kind: kind })),
 
-    masterSetPhase: (pass, phase) => rpc('master_set_phase', { p_passcode: pass, p_phase: phase }),
-    masterRevealStep: (pass, step) => rpc('master_set_reveal_step', { p_passcode: pass, p_step: step }),
-    masterLockOrder: (pass) => rpc('master_lock_order', { p_passcode: pass }),
-    masterPublish: (pass) => rpc('master_publish', { p_passcode: pass }),
+    masterSetPhase(pass, phase) {
+      if (DEMO) { demo.config.phase = phase; return Promise.resolve(demo.coachState()); }
+      return rpc('master_set_phase', { p_passcode: pass, p_phase: phase });
+    },
+
+    masterRevealStep(pass, step) {
+      if (DEMO) { demo.config.reveal_step = step; return Promise.resolve(demo.coachState()); }
+      return rpc('master_set_reveal_step', { p_passcode: pass, p_step: step });
+    },
+
+    masterLockOrder(pass) {
+      if (DEMO) {
+        demo.config.draft_order = demoTally()
+          .sort((a, b) => b.score - a.score || b.first - a.first).map((t) => t.code);
+        return Promise.resolve(demo.coachState());
+      }
+      return rpc('master_lock_order', { p_passcode: pass });
+    },
+
+    masterPublish(pass) {
+      if (DEMO) { demo.config.phase = 'RESULT'; return Promise.resolve(demo.coachState()); }
+      return rpc('master_publish', { p_passcode: pass });
+    },
     masterHideComment: (pass, id) => rpc('master_hide_comment', { p_passcode: pass, p_id: id }),
-    masterReset: (pass) => rpc('master_reset', { p_passcode: pass, p_confirm: 'RESET' }),
+    masterReset(pass) {
+      if (DEMO) {
+        Object.assign(demo.config, { phase: 'SETUP', reveal_step: 0, draft_order: null, progress_cursor: 0 });
+        return Promise.resolve(demo.coachState());
+      }
+      return rpc('master_reset', { p_passcode: pass, p_confirm: 'RESET' });
+    },
   };
 
   // ── 헬퍼 ──────────────────────────────────────────────
