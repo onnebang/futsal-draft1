@@ -1,0 +1,335 @@
+/* Pretendard — Apple SD Gothic Neo 를 웹에서 대체하기 위해 만들어진 폰트.
+   저장소에 직접 포함해 CDN 장애·차단과 무관하게 항상 같은 글꼴로 보이게 한다.
+   (SIL Open Font License 1.1 — assets/fonts/OFL.txt)
+   애플 기기에서는 아래 폰트 스택의 -apple-system 이 먼저 잡혀 진짜
+   Apple SD Gothic Neo 로 렌더링된다. */
+@font-face { font-family: 'Pretendard'; font-weight: 400; font-display: swap;
+  src: local('Pretendard Regular'), url('fonts/Pretendard-Regular.subset.woff2') format('woff2'); }
+@font-face { font-family: 'Pretendard'; font-weight: 500; font-display: swap;
+  src: local('Pretendard Medium'), url('fonts/Pretendard-Medium.subset.woff2') format('woff2'); }
+@font-face { font-family: 'Pretendard'; font-weight: 600; font-display: swap;
+  src: local('Pretendard SemiBold'), url('fonts/Pretendard-SemiBold.subset.woff2') format('woff2'); }
+@font-face { font-family: 'Pretendard'; font-weight: 700; font-display: swap;
+  src: local('Pretendard Bold'), url('fonts/Pretendard-Bold.subset.woff2') format('woff2'); }
+@font-face { font-family: 'Pretendard'; font-weight: 800; font-display: swap;
+  src: local('Pretendard ExtraBold'), url('fonts/Pretendard-ExtraBold.subset.woff2') format('woff2'); }
+
+/* ─────────────────────────────────────────────
+   FC풉살 드래프트 — 동글동글 · 통통 튀는 디자인
+   (슬랙 구조 + 말랑한 라운드 스타일)
+   ───────────────────────────────────────────── */
+:root {
+  --aubergine: #5b2b5e;
+  --aubergine-dark: #4a154b;
+  --sidebar-text: #d9c4da;
+  --sidebar-active: #2d9cdb;
+
+  --green: #00a37a;
+  --green-hover: #00b98a;
+  --blue: #36c5f0;
+  --mint: #2eb67d;
+  --yellow: #ecb22e;
+  --red: #e01e5a;
+
+  --ink: #2b2530;
+  --muted: #7b7286;
+  --faint: #a49bad;
+  --border: #ece7f0;
+  --border-strong: #ddd4e2;
+  --bg: #f7f3fa;
+  --surface: #ffffff;
+  --hover: #faf7fc;
+
+  --font: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard',
+          system-ui, 'Segoe UI', 'Malgun Gothic', sans-serif;
+
+  --radius: 22px;
+  --radius-lg: 28px;
+  --radius-sm: 16px;
+  --pill: 999px;
+  --shadow: 0 2px 0 rgba(91, 43, 94, .05), 0 8px 20px -8px rgba(91, 43, 94, .18);
+  --shadow-lg: 0 10px 30px -8px rgba(91, 43, 94, .28);
+
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15.5px;
+  line-height: 1.58;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1, h2, h3, h4, .display {
+  margin: 0;
+  font-family: var(--font);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.32;
+}
+button, input, textarea { font-family: inherit; }
+
+/* ── 통통 튀는 캐릭터 ──────────────────────── */
+.chr { display: block; overflow: visible; }
+.chr-crop { overflow: hidden; } /* 키 큰 선수 — 머리가 프레임 위로 잘린다 */
+.chr-bounce { animation: chrBounce 1.8s ease-in-out infinite; transform-origin: 50% 92%; }
+@keyframes chrBounce {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  22%      { transform: translateY(-7%) scale(.985, 1.025); }
+  42%      { transform: translateY(0) scale(1.03, .96); }
+  58%      { transform: translateY(-2.5%) scale(.995, 1.01); }
+  74%      { transform: translateY(0) scale(1.012, .99); }
+}
+.chr-wrap { display: flex; justify-content: center; }
+@media (prefers-reduced-motion: reduce) { .chr-bounce { animation: none; } }
+
+/* ── 워크스페이스 셸 ───────────────────────── */
+.ws { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 244px; flex: none;
+  background: var(--aubergine-dark);
+  color: var(--sidebar-text);
+  display: flex; flex-direction: column;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.ws-head { padding: 18px 18px 14px; }
+.ws-name { color: #fff; font-weight: 700; font-size: 19px; }
+.ws-sub { font-size: 12.5px; color: var(--sidebar-text); margin-top: 1px; }
+
+.channels { padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.ch-label { font-size: 12px; color: var(--sidebar-text); padding: 10px 10px 5px; opacity: .8; }
+.ch {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 13px; border-radius: var(--pill);
+  color: var(--sidebar-text); font-size: 14.5px; font-weight: 700;
+  background: none; border: 0; width: 100%; text-align: left; cursor: pointer;
+  transition: .15s;
+}
+.ch:hover:not(.locked) { background: rgba(255, 255, 255, .12); color: #fff; }
+.ch.active { background: var(--sidebar-active); color: #fff; box-shadow: 0 4px 12px -4px rgba(45, 156, 219, .7); }
+.ch.locked { opacity: .42; cursor: default; }
+.ch .hash { opacity: .75; }
+.ch .dot { margin-left: auto; width: 9px; height: 9px; border-radius: 50%; background: var(--yellow); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: .65; } }
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.ch-head { padding: 18px 22px 14px; position: sticky; top: 0; background: var(--bg); z-index: 20; }
+.ch-title { font-weight: 700; font-size: 21px; display: flex; align-items: center; gap: 6px; }
+.ch-desc { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+
+.pane { padding: 4px 22px 40px; max-width: 800px; width: 100%; }
+.pane.wide { max-width: 1140px; }
+
+/* 모바일: 상단 바 + 가로 채널 칩 */
+.topbar { display: none; background: var(--aubergine-dark); padding: 14px 16px 0; position: sticky; top: 0; z-index: 30; border-radius: 0 0 var(--radius) var(--radius); }
+.topbar .ws-name { font-size: 17px; }
+.topbar-channels { display: flex; gap: 7px; overflow-x: auto; padding: 11px 0 12px; scrollbar-width: none; }
+.topbar-channels::-webkit-scrollbar { display: none; }
+.topbar-channels .ch { width: auto; flex: none; white-space: nowrap; font-size: 13.5px; padding: 8px 15px; }
+
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .topbar { display: block; }
+  .pane { padding: 4px 14px 36px; }
+  .ch-head { padding: 14px 16px 10px; }
+}
+
+/* ── 카드 ─────────────────────────────────── */
+.card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+}
+.card + .card { margin-top: 14px; }
+
+/* ── 버튼 ─────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--green); color: #fff; border: 0;
+  padding: 13px 22px; border-radius: var(--pill);
+  font-weight: 700; font-size: 16px; cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0, 122, 90, .28); transition: .12s;
+}
+.btn:hover:not(:disabled) { background: var(--green-hover); transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 122, 90, .28); }
+.btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.btn.block { width: 100%; }
+.btn.ghost { background: #fff; color: var(--ink); border: 1.5px solid var(--border-strong); box-shadow: 0 3px 0 var(--border); }
+.btn.ghost:hover:not(:disabled) { background: var(--hover); }
+.btn.danger { background: var(--red); box-shadow: 0 4px 0 rgba(176, 20, 70, .3); }
+.btn.small { padding: 9px 16px; font-size: 14px; box-shadow: 0 3px 0 rgba(0, 122, 90, .25); }
+
+.input, .textarea {
+  width: 100%; padding: 13px 16px; border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-sm); font-size: 15.5px; outline: none; background: #fff;
+}
+.input:focus, .textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(54, 197, 240, .2); }
+.textarea { resize: vertical; min-height: 76px; }
+
+.hint { font-size: 13.5px; color: var(--muted); }
+.err { color: var(--red); font-size: 13.5px; font-weight: 700; }
+.ok { color: var(--green); font-size: 13.5px; font-weight: 700; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 13px; border-radius: var(--pill); font-size: 12.5px; font-weight: 800;
+  background: #f2edf6; color: var(--muted);
+}
+.chip.live { background: rgba(224, 30, 90, .1); color: var(--red); }
+.chip.live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1.4s ease-in-out infinite; }
+
+/* ── 메시지 (각오 한마디 · 응원) ────────────── */
+.msg { display: flex; gap: 11px; padding: 10px 0; align-items: flex-start; }
+.msg .chr { flex: none; }
+.avatar {
+  width: 42px; height: 42px; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff; font-size: 17px;
+}
+.msg-body { min-width: 0; flex: 1; }
+.msg-head { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.msg-name { font-weight: 700; font-size: 15.5px; }
+.msg-time { font-size: 12px; color: var(--faint); }
+.msg-text {
+  font-size: 14.5px; margin-top: 3px; word-break: break-word; white-space: pre-wrap;
+  background: #f6f2f9; border-radius: 4px 16px 16px 16px; padding: 9px 14px; display: inline-block;
+}
+
+/* ── 선수 그리드 ───────────────────────────── */
+.grid-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; align-items: start; }
+.pcard {
+  padding: 12px 6px 14px; border: 2px solid var(--border); border-radius: var(--radius);
+  background: #fff; cursor: pointer; text-align: center;
+  font-weight: 700; font-size: 16px;
+  transition: .15s; position: relative;
+}
+.pcard:hover:not(.disabled) { border-color: var(--blue); transform: translateY(-3px); box-shadow: var(--shadow); }
+.pcard.sel { background: var(--aubergine-dark); border-color: var(--aubergine-dark); color: #fff; }
+.pcard.disabled { opacity: .45; cursor: not-allowed; background: #f7f5f8; }
+.pcard.disabled .chr-bounce { animation: none; }
+.pcard .done { display: block; font-weight: 700; font-size: 10.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+.pcard .wish { display: flex; gap: 3px; justify-content: center; margin-top: 5px; flex-wrap: wrap; }
+.pcard .wtag { font-weight: 700; font-size: 10px; font-weight: 900; padding: 2px 7px; border-radius: var(--pill); color: #fff; }
+.pcard .bubble {
+  display: block; margin-top: 7px; font-weight: 700; font-size: 11px; font-weight: 600;
+  color: var(--muted); background: #f6f2f9; border-radius: 12px 12px 12px 3px; padding: 6px 9px; line-height: 1.35;
+}
+
+/* ── 팀 선택 ───────────────────────────────── */
+.team-opts { display: flex; flex-direction: column; gap: 11px; }
+.team-opt {
+  display: flex; align-items: center; gap: 13px; padding: 15px 17px;
+  border: 2.5px solid var(--border); border-radius: var(--radius);
+  background: #fff; cursor: pointer; text-align: left; width: 100%; transition: .15s;
+}
+.team-opt:hover { background: var(--hover); transform: translateY(-2px); }
+.team-opt.sel { border-color: currentColor; box-shadow: var(--shadow); }
+.team-swatch { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+.team-opt .tname { font-weight: 700; font-size: 17px; color: var(--ink); }
+.team-opt .tcoach { font-size: 12.5px; color: var(--muted); }
+.team-opt .pick-no {
+  margin-left: auto; font-weight: 700; font-size: 13px; padding: 6px 13px;
+  border-radius: var(--pill); background: #f2edf6; color: var(--muted);
+}
+
+/* ── 진행률 ───────────────────────────────── */
+.progress { height: 14px; background: #ece6f0; border-radius: var(--pill); overflow: hidden; }
+.progress > i {
+  display: block; height: 100%; border-radius: var(--pill);
+  background: linear-gradient(90deg, var(--mint), var(--blue));
+  transition: width .6s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+/* ── 발표 (프듀101) ────────────────────────── */
+.reveal-stage {
+  background: linear-gradient(160deg, #6a3270 0%, #3d1140 100%);
+  border-radius: var(--radius-lg); padding: 32px 22px; color: #fff; text-align: center;
+}
+.reveal-rank { font-size: 13px; font-weight: 800; letter-spacing: .12em; color: var(--yellow); }
+.reveal-team { font-weight: 700; font-size: 32px; margin: 10px 0 6px; }
+.reveal-score { font-size: 14px; opacity: .85; }
+.reveal-card {
+  border-radius: var(--radius); padding: 18px 20px; margin-top: 12px; color: #fff;
+  display: flex; align-items: center; gap: 14px; animation: popIn .55s cubic-bezier(.34, 1.56, .64, 1) both;
+  box-shadow: var(--shadow-lg);
+}
+@keyframes popIn { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
+.reveal-card .no { font-size: 30px; }
+.reveal-card .nm { font-weight: 700; font-size: 21px; }
+.reveal-card .sc { margin-left: auto; font-weight: 700; font-size: 18px; opacity: .95; }
+
+/* ── 로스터 ───────────────────────────────── */
+.roster-head { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; }
+.roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.roster-slot {
+  padding: 12px 6px 14px; border-radius: var(--radius); text-align: center;
+  font-weight: 700; font-size: 16px; background: #f7f4fa; color: var(--ink);
+}
+.roster-slot.empty { color: #c9c1d0; background: #fbfafc; border: 2px dashed var(--border-strong); }
+.roster-slot.me { background: #fff6dd; box-shadow: 0 0 0 2.5px var(--yellow); }
+
+/* ── 승률 바 ──────────────────────────────── */
+.prob-row { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.prob-name { width: 100px; font-weight: 700; font-size: 14.5px; flex: none; }
+.prob-track { flex: 1; height: 26px; background: #f0ebf4; border-radius: var(--pill); overflow: hidden; }
+.prob-track > i { display: block; height: 100%; border-radius: var(--pill); transition: width .8s cubic-bezier(.34, 1.56, .64, 1); }
+.prob-val { width: 50px; text-align: right; font-weight: 700; font-size: 15px; }
+
+/* ── 코치 보드 ─────────────────────────────── */
+.turn-banner {
+  padding: 18px 22px; border-radius: var(--radius); color: #fff;
+  background: linear-gradient(135deg, #6a3270, #4a154b);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: var(--shadow);
+}
+.turn-banner.mine { background: linear-gradient(135deg, #00b98a, #00876a); }
+.turn-banner .big { font-weight: 700; font-size: 21px; }
+.seq-bar { display: flex; gap: 6px; align-items: center; overflow-x: auto; padding: 14px 2px; }
+.seq-pill {
+  min-width: 30px; text-align: center; padding: 6px 0; border-radius: var(--pill);
+  font-weight: 700; font-size: 13px; color: #fff; flex: none; opacity: .3; transition: .2s;
+}
+.seq-pill.now { opacity: 1; transform: scale(1.22); box-shadow: var(--shadow); }
+
+.board { display: grid; grid-template-columns: 1.45fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
+
+.log { max-height: 280px; overflow-y: auto; font-size: 13.5px; }
+.log-row { display: flex; gap: 9px; align-items: center; padding: 7px 0; border-bottom: 1.5px solid var(--border); }
+.log-seq { color: var(--faint); font-weight: 700; width: 30px; flex: none; }
+
+/* ── 모달 ─────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(43, 37, 48, .55);
+  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+  backdrop-filter: blur(3px);
+}
+.modal {
+  background: #fff; border-radius: var(--radius-lg); padding: 24px;
+  width: 100%; max-width: 400px; box-shadow: var(--shadow-lg);
+  animation: popIn .35s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.modal h3 { font-size: 21px; margin-bottom: 4px; }
+
+.hidden { display: none !important; }
+.stack { display: flex; flex-direction: column; gap: 11px; }
+.row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+.spacer { flex: 1; }
+.mt { margin-top: 15px; }
+.center { text-align: center; }
+
+/* 로그인 게이트 */
+.gate {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: linear-gradient(160deg, #6a3270, #3d1140);
+}
+.gate-card { background: #fff; border-radius: var(--radius-lg); padding: 32px 26px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); }
+.gate-card h1 { font-size: 25px; margin-bottom: 6px; }
