@@ -79,13 +79,17 @@ button, input, textarea { font-family: inherit; }
 /* ── 통통 튀는 캐릭터 ──────────────────────── */
 .chr { display: block; overflow: visible; }
 .chr-crop { overflow: hidden; } /* 키 큰 선수 — 머리가 프레임 위로 잘린다 */
-.chr-bounce { animation: chrBounce 1.8s ease-in-out infinite; transform-origin: 50% 92%; }
+/* 둠칫둠칫 — 두 박자로 확실히 올라갔다 내려온다.
+   올라갈 때 살짝 늘고 착지에서 눌리는 스쿼시&스트레치가 리듬을 만든다. */
+.chr-bounce { animation: chrBounce 1.15s ease-in-out infinite; transform-origin: 50% 96%; }
 @keyframes chrBounce {
-  0%, 100% { transform: translateY(0) scale(1, 1); }
-  22%      { transform: translateY(-7%) scale(.985, 1.025); }
-  42%      { transform: translateY(0) scale(1.03, .96); }
-  58%      { transform: translateY(-2.5%) scale(.995, 1.01); }
-  74%      { transform: translateY(0) scale(1.012, .99); }
+  0%   { transform: translateY(0)     scale(1.045, .955); }
+  18%  { transform: translateY(-11%)  scale(.965, 1.05); }
+  38%  { transform: translateY(-13%)  scale(.98, 1.03); }
+  50%  { transform: translateY(0)     scale(1.055, .945); }
+  68%  { transform: translateY(-6%)   scale(.985, 1.022); }
+  84%  { transform: translateY(-7%)   scale(.99, 1.015); }
+  100% { transform: translateY(0)     scale(1.045, .955); }
 }
 .chr-wrap { display: flex; justify-content: center; }
 @media (prefers-reduced-motion: reduce) { .chr-bounce { animation: none; } }
@@ -185,7 +189,60 @@ button, input, textarea { font-family: inherit; }
   background: #f2edf6; color: var(--muted);
 }
 .chip.live { background: rgba(224, 30, 90, .1); color: var(--red); }
+.chip.tap { border: 0; cursor: pointer; transition: .15s; }
+.chip.tap:hover { background: #e7dff0; transform: translateY(-1px); }
+.chip.tap:active { transform: translateY(0); }
+
+/* ── 캐릭터 커스터마이저 ───────────────────── */
+.chr-stage {
+  display: flex; justify-content: center; align-items: flex-end;
+  min-height: 268px; padding: 44px 0 4px;
+  background: radial-gradient(ellipse 60% 42% at 50% 88%, rgba(91, 43, 94, .09), transparent 70%);
+}
+.look-row { display: flex; align-items: flex-start; gap: 12px; padding: 9px 0; }
+.look-row + .look-row { border-top: 1.5px solid var(--border); }
+.look-label { flex: none; width: 78px; padding-top: 6px; font-size: 13.5px; font-weight: 800; color: var(--muted); }
+.look-opts { flex: 1; display: flex; flex-wrap: wrap; gap: 7px; }
+
+.look-opts .sw {
+  width: 32px; height: 32px; border-radius: 50%; padding: 0; cursor: pointer;
+  border: 2.5px solid var(--border); transition: .15s;
+}
+.look-opts .sw:hover { transform: scale(1.1); }
+.look-opts .sw.sel { border-color: var(--ink); transform: scale(1.14); box-shadow: var(--shadow); }
+
+.look-opts .opt {
+  padding: 7px 14px; border-radius: var(--pill); cursor: pointer;
+  border: 2px solid var(--border); background: #fff;
+  font-size: 13px; font-weight: 700; color: var(--muted); transition: .15s;
+}
+.look-opts .opt:hover { border-color: var(--blue); color: var(--ink); }
+.look-opts .opt.sel { background: var(--aubergine-dark); border-color: var(--aubergine-dark); color: #fff; }
+
+/* ── 미투표자 목록 ─────────────────────────── */
+.waiting { display: flex; flex-wrap: wrap; gap: 7px; }
+.waiting .w {
+  padding: 6px 13px; border-radius: var(--pill);
+  background: #f2edf6; color: var(--muted);
+  font-size: 13.5px; font-weight: 700;
+}
 .chip.live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1.4s ease-in-out infinite; }
+
+/* ── 무기명 안내 ───────────────────────────── */
+/* 투표 화면에서 "내가 고른 팀이 나와 연결되지 않는다"를 약속하는 블록.
+   요구사항 3(무기명)의 UI 쪽 표현이라 문구를 약하게 고치지 말 것. */
+.privacy {
+  display: flex; gap: 11px; align-items: flex-start;
+  margin: 4px 0 14px; padding: 13px 15px;
+  background: rgba(0, 163, 122, .07);
+  border: 2px solid rgba(0, 163, 122, .22);
+  border-radius: var(--radius-sm);
+}
+.privacy .lock { font-size: 19px; line-height: 1.3; flex: none; }
+.privacy .ptitle { display: block; font-size: 14px; font-weight: 800; color: var(--green); margin-bottom: 4px; }
+.privacy p { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0; }
+.privacy p + p { margin-top: 6px; }
+.privacy strong { color: var(--ink); font-weight: 800; }
 
 /* ── 메시지 (각오 한마디 · 응원) ────────────── */
 .msg { display: flex; gap: 11px; padding: 10px 0; align-items: flex-start; }

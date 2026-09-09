@@ -74,6 +74,11 @@
       효린: '골 넣고 세리머니 준비했어요',
       호원: '어시스트 담당하겠습니다!',
     },
+    looks: {
+      해수: { h: 1, hl: 3, hs: 1, hc: 6, sk: 0, fa: 1, ts: 1, tc: 7, bs: 1, bc: 1, ss: 2, sc: 0, bo: 3 },
+      가은: { h: 3, hl: 0, hs: 3, hc: 0, sk: 2, fa: 5, ts: 4, tc: 2, bs: 0, bc: 0, ss: 1, sc: 5, bo: 1 },
+      혜린: { h: 2, hl: 2, hs: 4, hc: 7, sk: 1, fa: 3, ts: 2, tc: 4, bs: 2, bc: 2, ss: 0, sc: 6, bo: 2 },
+    },
     ballots: [['A', 'C'], ['A', 'B'], ['B', 'A'], ['C', 'A'], ['A', 'C']],
     rosters: ['RESULT', 'PREDICT', 'MATCH'].includes(demoPhase) ? [
       { team: 'A', members: ['가은', '나영', '민지', '해수', '혜린', '효린'], power: 2.1 },
@@ -199,6 +204,17 @@
     async submitPledge(name, body) {
       if (DEMO) { demo.pledges[name] = body; return { ok: true }; }
       return rpc('submit_pledge', { p_name: name, p_body: body });
+    },
+
+    async looks() {
+      if (DEMO) return { ...demo.looks };
+      const rows = await rest('draft_looks?select=player_name,look');
+      return Object.fromEntries(rows.map((r) => [r.player_name, r.look]));
+    },
+
+    async submitLook(name, look) {
+      if (DEMO) { demo.looks[name] = look; return { ok: true }; }
+      return rpc('submit_look', { p_name: name, p_look: look });
     },
 
     async voteTally() {
@@ -361,13 +377,75 @@
     return a;
   }
 
-  function confetti() {
-    if (typeof window.confetti !== 'function') return;
-    const end = Date.now() + 2500;
-    (function frame() {
-      window.confetti({ particleCount: 4, spread: 70, origin: { x: Math.random(), y: Math.random() * .5 } });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    })();
+  // 축포 — 외부 CDN을 쓰지 않는다.
+  // 예전에 jsDelivr가 막혀 폰트가 통째로 깨진 적이 있어서, 이 프로젝트는
+  // 브라우저로 나가는 리소스를 저장소 안에만 둔다. 캔버스 200줄이면 충분하다.
+  function confetti(opts = {}) {
+    if (typeof document === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+    const COLORS = opts.colors || ['#36C5F0', '#E01E5A', '#2EB67D', '#F2B705', '#7A4FCF', '#EE7B30'];
+    const count = opts.count || 130;
+    const duration = opts.duration || 2600;
+
+    const cv = document.createElement('canvas');
+    cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+    document.body.appendChild(cv);
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = cv.width = innerWidth * dpr;
+    const H = cv.height = innerHeight * dpr;
+    const ctx = cv.getContext('2d');
+    if (!ctx) { cv.remove(); return; }
+    ctx.scale(dpr, dpr);
+
+    const w = innerWidth, h = innerHeight;
+    // 좌우 하단에서 비스듬히 쏘아 올린다 — 가운데에서 터뜨리는 것보다 무대 느낌이 난다
+    const bits = Array.from({ length: count }, (_, i) => {
+      const left = i % 2 === 0;
+      const angle = (left ? -60 : -120) + (Math.random() - .5) * 46;
+      const speed = 11 + Math.random() * 11;
+      return {
+        x: left ? w * .08 : w * .92,
+        y: h * .96,
+        vx: Math.cos(angle * Math.PI / 180) * speed,
+        vy: Math.sin(angle * Math.PI / 180) * speed,
+        size: 5 + Math.random() * 6,
+        color: COLORS[(Math.random() * COLORS.length) | 0],
+        rot: Math.random() * Math.PI * 2,
+        spin: (Math.random() - .5) * .32,
+        wob: Math.random() * Math.PI * 2,
+        ratio: .35 + Math.random() * .65,
+      };
+    });
+
+    const start = performance.now();
+    (function frame(now) {
+      const t = now - start;
+      if (t > duration) { cv.remove(); return; }
+      const fade = t > duration - 700 ? (duration - t) / 700 : 1;
+      ctx.clearRect(0, 0, w, h);
+
+      for (const b of bits) {
+        b.vy += .34;             // 중력
+        b.vx *= .992;            // 공기 저항
+        b.wob += .1;
+        b.x += b.vx + Math.sin(b.wob) * .7;
+        b.y += b.vy;
+        b.rot += b.spin;
+        if (b.y > h + 40) continue;
+
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rot);
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = b.color;
+        // 회전에 따라 폭을 눌러 종잇조각이 팔랑거리는 것처럼 보이게 한다
+        ctx.fillRect(-b.size / 2, -b.size * b.ratio / 2, b.size, b.size * b.ratio * Math.abs(Math.cos(b.wob)));
+        ctx.restore();
+      }
+      requestAnimationFrame(frame);
+    })(start);
   }
 
   window.FDApp = { api, store, snakeTeam, snakeSeq, colorFor, esc, timeAgo, shuffled, confetti, DEMO };

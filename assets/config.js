@@ -35,6 +35,8 @@ window.FD = {
     DUPLICATE_CHOICE: '같은 팀을 중복해서 고를 수 없어요.',
     UNKNOWN_PLAYER: '명단에 없는 이름입니다.',
     PLEDGE_CLOSED: '각오 한마디는 지금 남길 수 없어요.',
+    LOOK_CLOSED: '지금은 캐릭터를 바꿀 수 없어요.',
+    BAD_LOOK: '캐릭터 설정을 저장하지 못했어요. 다시 시도해주세요.',
     COMMENTS_CLOSED: '아직 응원 채널이 열리지 않았어요.',
     VOTE_IN_PROGRESS: '투표가 끝나야 결과를 볼 수 있어요.',
   },
