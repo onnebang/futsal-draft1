@@ -188,6 +188,14 @@ button, input, textarea { font-family: inherit; }
 .chip.tap { border: 0; cursor: pointer; transition: .15s; }
 .chip.tap:hover { background: #e7dff0; transform: translateY(-1px); }
 .chip.tap:active { transform: translateY(0); }
+
+/* ── 미투표자 목록 ─────────────────────────── */
+.waiting { display: flex; flex-wrap: wrap; gap: 7px; }
+.waiting .w {
+  padding: 6px 13px; border-radius: var(--pill);
+  background: #f2edf6; color: var(--muted);
+  font-size: 13.5px; font-weight: 700;
+}
 .chip.live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1.4s ease-in-out infinite; }
 
 /* ── 무기명 안내 ───────────────────────────── */
