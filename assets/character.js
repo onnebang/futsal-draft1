@@ -36,6 +36,17 @@
   // 마지막 칸만 프레임을 뚫고 나가 머리가 잘린다 — 일부러 남겨둔 장난 칸.
   // 인접 단계가 10% 넘게 벌어져야 작은 명단에서도 차이가 보인다.
   const HEIGHT = [0.68, 0.78, 0.88, 0.98, 1.08, 1.32];
+
+  // 체형 — 어깨 너비(sw) · 팔 두께(aw) · 팔 바깥쪽 이동(ao).
+  // 몸통은 어깨에서 넓어져 허리로 좁아지는 사다리꼴이라, sw 만 키우면
+  // 어깨만 벌어지고 허리는 그대로 남아 실루엣이 달라진다.
+  const BUILD = [
+    { sw: 0,    aw: 0,    ao: 0 },     // 보통
+    { sw: 3.4,  aw: 0.6,  ao: 2.6 },   // 어깨 넓게
+    { sw: 4.6,  aw: 1.8,  ao: 3.6 },   // 근육형
+    { sw: 2.0,  aw: 1.3,  ao: 1.7 },   // 다부짐
+    { sw: -1.8, aw: -0.6, ao: -1.2 },  // 슬림
+  ];
   const CROP_AT = 1.15;
 
   // 머리 길이별 옆머리가 내려오는 지점 (얼굴 아래 = 유니폼 위로 흘러내림)
@@ -70,15 +81,17 @@
     ss: ['무지', '윗단', '줄무늬', '두줄', '발목'],
     po: ['기본', '리프팅', '슈팅', '세리머니', '달리기', '하트', '박수', '인사', '헤딩', '수비', '만세', '팔짱'],
     ac: ['없음', '헤어핀', '안경', '선글라스', '리본', '주장완장', '목도리', '모자'],
+    bd: ['보통', '어깨 넓게', '근육형', '다부짐', '슬림'],
+    fh: ['없음', '콧수염', '턱수염', '염소수염', '구레나룻', '덥수룩'],
     ol: ['없음', '진하게', '하얗게', '굵게', '보라'],
-    nu: ['없음', ...Array.from({ length: 30 }, (_, i) => String(i + 1))],
+    // nu(등번호)는 라벨 배열을 두지 않는다 — 0~999 직접 입력이라 칩으로 못 늘어놓는다
   };
 
   const PALETTE = { hc: HAIR, sk: SKIN, tc: KIT, bc: BOTTOM, sc: SOCK, bo: BOOT, ah: ACC, bg: BG };
   const SIZE = {
     h: 6, hl: 5, hs: 10, hc: 12, sk: 8, fa: 10,
     ts: 8, tc: 12, bs: 5, bc: 12, ss: 5, sc: 12, bo: 10,
-    po: 12, ac: 8, ah: 6, bg: 12, ol: 5, nu: 31,
+    po: 12, ac: 8, ah: 6, bg: 12, ol: 5, fh: 6, bd: 5, nu: 1000,   // nu: 0 = 없음, 1~999
   };
   const KEYS = Object.keys(SIZE);
 
@@ -115,8 +128,10 @@
       po: 0, // 자세는 해시로 흩뜨리지 않는다 — 고르기 전에는 모두 차렷
       ac: 0, // 액세서리도 마찬가지 — 직접 고르는 재미로 남겨둔다
       ah: (h >>> 26) % SIZE.ah,
-      bg: 0, // 배경·테두리·등번호는 기본 없음 — 고르는 사람만 티가 나게
+      bg: 0, // 배경·테두리·수염·등번호는 기본 없음 — 고르는 사람만 티가 나게
       ol: 0,
+      fh: 0,
+      bd: 0,
       nu: 0,
     };
   }
@@ -248,21 +263,59 @@
       C${x + r * 1.05} ${y - r * 1.25} ${x + r * 2.1} ${y + r * .3} ${x} ${y + r * 1.9} z" fill="#E8455F"/>`;
   }
 
+  // ── 몸통 ──────────────────────────────────────────────
+  // 어깨(y37)에서 sw 만큼 벌어지고 허리(y69)는 그대로인 사다리꼴.
+  // sw=0 이면 지금까지의 반듯한 사각형과 같은 모양이 된다.
+  function torsoPath(sw) {
+    const L = 17 - sw, R = 47 + sw;
+    return `M${L} 40.5 Q${L} 37 ${L + 3} 37 H${R - 3} Q${R} 37 ${R} 40.5 `
+         + `L47 65.5 Q47 69 43.5 69 H20.5 Q17 69 17 65.5 Z`;
+  }
+
+  // ── 수염 ──────────────────────────────────────────────
+  // 얼굴 모양으로 클리핑해서 턱선을 따라 두른다. 머리색을 그대로 써야 붕 뜨지 않는다.
+  // 성별을 나누는 항목이 아니라 누구나 고를 수 있는 한 칸이다.
+  function beardHtml(kind, color, skin, uid) {
+    if (!kind) return '';
+    const clip = `fc${uid}`;
+    const face = `<defs><clipPath id="${clip}"><rect x="21" y="4" width="22" height="27" rx="6"/></clipPath></defs>`;
+    const mustache = `<rect x="26.8" y="23.2" width="10.4" height="2.9" rx="1.45" fill="${color}"/>`;
+    // 아래턱을 채우고 볼 안쪽을 살색으로 도려내 턱선만 남긴다
+    const jaw = (op) => `${face}<g clip-path="url(#${clip})" opacity="${op}">
+      <rect x="19" y="23.5" width="26" height="10" fill="${color}"/>
+      <ellipse cx="32" cy="25.2" rx="7.6" ry="5.2" fill="${skin}"/></g>`;
+    const goatee = `<rect x="29.4" y="27.6" width="5.2" height="4" rx="1.9" fill="${color}"/>`;
+    const burns = `${face}<g clip-path="url(#${clip})">
+      <rect x="20" y="14" width="3.6" height="12" fill="${color}"/>
+      <rect x="40.4" y="14" width="3.6" height="12" fill="${color}"/></g>`;
+
+    switch (kind) {
+      case 1: return mustache;
+      case 2: return jaw(1);
+      case 3: return goatee;
+      case 4: return burns;
+      case 5: return jaw(1) + mustache + goatee;   // 덥수룩
+      default: return '';
+    }
+  }
+
   // ── 상의 무늬 (저지 영역으로 클리핑) ──────────────────
   function topPattern(kind, trim, uid) {
+    // 무늬는 몸통보다 넉넉하게 그리고 클립으로 자른다 —
+    // 체형에 따라 어깨가 x12 까지 벌어지므로, 딱 맞게 그리면 넓은 어깨에서
+    // 가운데만 덮이고 어깨가 민무늬로 남는다.
     const inner = {
-      1: `<rect x="21" y="37" width="4.5" height="32" fill="${trim}"/>
-          <rect x="29.8" y="37" width="4.5" height="32" fill="${trim}"/>
-          <rect x="38.5" y="37" width="4.5" height="32" fill="${trim}"/>`,
-      2: `<rect x="17" y="48" width="30" height="8.5" fill="${trim}"/>`,
-      3: `<rect x="27" y="21" width="10" height="64" transform="rotate(-34 32 53)" fill="${trim}"/>`,
-      4: `<rect x="32" y="37" width="15" height="32" fill="${trim}"/>`,
-      5: [0, 1, 2].map((r) => [0, 1, 2].map((c) =>
-            `<circle cx="${22 + c * 10}" cy="${43 + r * 10}" r="2.6" fill="${trim}"/>`).join('')).join(''),
-      6: `<rect x="17" y="37" width="30" height="5.5" fill="${trim}"/>
-          <rect x="17" y="44.5" width="30" height="2.4" fill="${trim}"/>`,
-      7: `<rect x="17" y="52" width="30" height="10" fill="${trim}"/>
-          <rect x="17" y="64" width="30" height="2.6" fill="${trim}"/>`,
+      1: [12.6, 21.4, 30.2, 39, 47.8].map((x) =>
+            `<rect x="${x}" y="37" width="4.6" height="32" fill="${trim}"/>`).join(''),
+      2: `<rect x="10" y="48" width="44" height="8.5" fill="${trim}"/>`,
+      3: `<rect x="27" y="18" width="10" height="70" transform="rotate(-34 32 53)" fill="${trim}"/>`,
+      4: `<rect x="32" y="37" width="22" height="32" fill="${trim}"/>`,
+      5: [0, 1, 2].map((r) => [0, 1, 2, 3].map((c) =>
+            `<circle cx="${17 + c * 10}" cy="${43 + r * 10}" r="2.6" fill="${trim}"/>`).join('')).join(''),
+      6: `<rect x="10" y="37" width="44" height="5.5" fill="${trim}"/>
+          <rect x="10" y="44.5" width="44" height="2.4" fill="${trim}"/>`,
+      7: `<rect x="10" y="52" width="44" height="10" fill="${trim}"/>
+          <rect x="10" y="64" width="44" height="2.6" fill="${trim}"/>`,
     }[kind];
     return inner ? `<g clip-path="url(#${uid})">${inner}</g>` : '';
   }
@@ -385,18 +438,23 @@
     const crop = (tall > CROP_AT && opts.crop !== false) ? 'chr-crop ' : '';
 
     const P = POSE[L.po] || POSE[0];
+    const B = BUILD[L.bd] || BUILD[0];
+    const torso = torsoPath(B.sw);
 
     // 팔 — 어깨에서 한 번, 팔꿈치에서 한 번 더 돈다 (중첩 회전 = 관절).
     // 소매를 나중에 그려 팔뚝 위쪽을 덮는다.
     const arm = (isL) => {
-      const px = isL ? 14.25 : 49.75;
+      const px = (isL ? 14.25 : 49.75) + (isL ? -B.ao : B.ao);
       const sa = isL ? P.arms[0] : P.arms[2];
       const ea = isL ? P.arms[1] : P.arms[3];
+      const fw = 5.5 + B.aw, sw2 = 6.5 + B.aw;
+      const fx = isL ? 11.5 - B.ao - B.aw : 47 + B.ao;
+      const sx = isL ? 11 - B.ao - B.aw : 46.5 + B.ao;
       return `<g transform="rotate(${sa} ${px} 41)">
         <g transform="rotate(${ea} ${px} 53)">
-          <rect x="${isL ? 11.5 : 47}" y="50" width="5.5" height="18" rx="2.75" fill="${skin}"/>
+          <rect x="${fx}" y="50" width="${fw}" height="18" rx="${fw / 2}" fill="${skin}"/>
         </g>
-        <rect x="${isL ? 11 : 46.5}" y="37" width="6.5" height="15" rx="3" fill="${kit}"/>
+        <rect x="${sx}" y="37" width="${sw2}" height="15" rx="3" fill="${kit}"/>
       </g>`;
     };
 
@@ -435,7 +493,7 @@
 
     return `<svg class="chr ${crop}${opts.bounce === false ? '' : 'chr-bounce'}" viewBox="0 0 64 120"
       width="${size}" height="${Math.round(size * 120 / 64)}" style="animation-delay:${delay}s" aria-hidden="true">
-      <defs><clipPath id="${uid}"><rect x="17" y="37" width="30" height="32" rx="3.5"/></clipPath></defs>
+      <defs><clipPath id="${uid}"><path d="${torso}"/></clipPath></defs>
       ${bg}
       ${open}
       ${strokeOpen}
@@ -443,7 +501,7 @@
 
       ${/* 목 · 유니폼 */ ''}
       <rect x="28.5" y="30" width="7" height="8" fill="${skin}"/>
-      <rect x="17" y="37" width="30" height="32" rx="3.5" fill="${kit}"/>
+      <path d="${torso}" fill="${kit}"/>
       ${topPattern(L.ts, trim, uid)}
       <rect x="28" y="37" width="8" height="3.5" rx="1.5" fill="${trim}"/>
 
@@ -456,8 +514,10 @@
       ${hairHtml(L.hl, L.hs, hairC, band)}
       ${strokeClose}
 
-      ${number ? `<text x="32" y="59" text-anchor="middle" font-size="11"
+      ${number ? `<text x="32" y="59" text-anchor="middle"
+        font-size="${String(number).length >= 3 ? 8.6 : 11}"
         font-family="-apple-system, Pretendard, sans-serif" font-weight="700" fill="${trim}">${number}</text>` : ''}
+      ${beardHtml(L.fh, hairC, skin, uid)}
       ${faceHtml(L.fa, skin)}
       ${accHtml(L.ac, ACC[L.ah], skin)}
       ${ballHtml(P.ball)}${heartHtml(P.heart)}
@@ -471,6 +531,7 @@
   function randomLook() {
     const out = {};
     KEYS.forEach((k) => { out[k] = Math.floor(Math.random() * SIZE[k]); });
+    out.nu = Math.floor(Math.random() * 100); // 등번호는 두 자리까지만 — 743번은 축구답지 않다
     return out;
   }
 
