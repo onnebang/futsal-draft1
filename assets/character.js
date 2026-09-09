@@ -26,6 +26,21 @@
   // 머리 길이별 옆머리가 내려오는 지점 (얼굴 아래 = 유니폼 위로 흘러내림)
   const HAIR_LEN = [17, 25, 35, 50];
 
+  // 자세 — 팔다리를 어깨·팔꿈치·엉덩이·무릎에서 돌려 만든다 (양수 = 시계방향).
+  // arms: [왼어깨, 왼팔꿈치, 오른어깨, 오른팔꿈치]
+  // legs: [왼엉덩이, 왼무릎, 오른엉덩이, 오른무릎]
+  // ball: [x, y, r] — 있으면 공을 그린다
+  const POSE = [
+    { arms: [0, 0, 0, 0],         legs: [0, 0, 0, 0] },                            // 기본
+    { arms: [34, 8, -34, -8],     legs: [4, 0, -35, 62],   ball: [52, 79, 6.5] },  // 리프팅 — 무릎 위에 공
+    { arms: [52, 14, -26, -34],   legs: [16, -6, -44, -16], ball: [56, 104, 6] },  // 슈팅 — 뻗은 발 끝에 공
+    { arms: [152, -14, -152, 14], legs: [7, 0, -9, 0] },                           // 세리머니 — 두 팔 V
+    { arms: [55, 40, -20, -75],   legs: [28, 8, -32, 48] },                        // 달리기 — 팔을 엇갈리게
+    { arms: [185, 47, -185, -47], legs: [0, 0, 0, 0], heart: [32, 12, 7.5] },      // 하트 — 머리 위에서 손이 모인다
+    { arms: [25, -115, -25, 115], legs: [0, 0, 0, 0] },                            // 박수 — 가슴 앞에서 손이 모인다
+    { arms: [150, -18, -18, -8],  legs: [5, 0, -7, 0] },                           // 인사
+  ];
+
   const LABEL = {
     h: ['아담', '조금 작게', '보통', '조금 크게', '아주 크게'],
     hl: ['짧게', '단발', '어깨', '길게'],
@@ -34,10 +49,11 @@
     ts: ['무지', '세로줄', '가로줄', '사선', '반반'],
     bs: ['무지', '옆줄', '밑단'],
     ss: ['무지', '윗단', '줄무늬'],
+    po: ['기본', '리프팅', '슈팅', '세리머니', '달리기', '하트', '박수', '인사'],
   };
 
   const PALETTE = { hc: HAIR, sk: SKIN, tc: KIT, bc: BOTTOM, sc: SOCK, bo: BOOT };
-  const SIZE = { h: 5, hl: 4, hs: 6, hc: 8, sk: 6, fa: 6, ts: 5, tc: 10, bs: 3, bc: 10, ss: 3, sc: 10, bo: 6 };
+  const SIZE = { h: 5, hl: 4, hs: 6, hc: 8, sk: 6, fa: 6, ts: 5, tc: 10, bs: 3, bc: 10, ss: 3, sc: 10, bo: 6, po: 8 };
   const KEYS = Object.keys(SIZE);
 
   // 키가 커서 프레임을 뚫고 나가는 선수 — 커스텀 룩이 없을 때만 적용된다
@@ -70,6 +86,7 @@
       ss: (h >>> 20) % SIZE.ss,
       sc: (h >>> 23) % SIZE.sc,
       bo: (h >>> 18) % SIZE.bo,
+      po: 0, // 자세는 해시로 흩뜨리지 않는다 — 고르기 전에는 모두 차렷
     };
   }
 
@@ -170,31 +187,40 @@
     return inner ? `<g clip-path="url(#${uid})">${inner}</g>` : '';
   }
 
-  // ── 하의 무늬 ─────────────────────────────────────────
-  function bottomPattern(kind, trim) {
-    if (kind === 1) { // 옆줄
-      return `<rect x="17" y="66" width="3.4" height="17" fill="${trim}"/>
-              <rect x="43.6" y="66" width="3.4" height="17" fill="${trim}"/>`;
-    }
-    if (kind === 2) { // 밑단 띠
-      return `<rect x="17" y="78.5" width="14" height="4.5" fill="${trim}"/>
-              <rect x="33" y="78.5" width="14" height="4.5" fill="${trim}"/>`;
+  // ── 하의 무늬 (다리 한쪽씩 — 자세에 따라 다리가 따로 돌기 때문) ──
+  function bottomPattern(kind, trim, isL) {
+    if (kind === 1) return `<rect x="${isL ? 17 : 43.6}" y="66" width="3.4" height="17" fill="${trim}"/>`;
+    if (kind === 2) return `<rect x="${isL ? 17 : 33}" y="78.5" width="14" height="4.5" fill="${trim}"/>`;
+    return '';
+  }
+
+  // ── 양말 무늬 (마찬가지로 한쪽씩) ─────────────────────
+  function sockPattern(kind, trim, isL) {
+    const x = isL ? 20 : 35.5;
+    if (kind === 1) return `<rect x="${x}" y="94" width="8.5" height="4.5" fill="${trim}"/>`;
+    if (kind === 2) {
+      return [0, 5, 10].map((d) => `<rect x="${x}" y="${95.5 + d}" width="8.5" height="2.4" fill="${trim}"/>`).join('');
     }
     return '';
   }
 
-  // ── 양말 무늬 ─────────────────────────────────────────
-  function sockPattern(kind, trim) {
-    if (kind === 1) { // 윗단 띠
-      return `<rect x="20" y="94" width="8.5" height="4.5" fill="${trim}"/>
-              <rect x="35.5" y="94" width="8.5" height="4.5" fill="${trim}"/>`;
-    }
-    if (kind === 2) { // 가로 줄무늬
-      return [0, 5, 10].map((d) =>
-        `<rect x="20" y="${95.5 + d}" width="8.5" height="2.4" fill="${trim}"/>
-         <rect x="35.5" y="${95.5 + d}" width="8.5" height="2.4" fill="${trim}"/>`).join('');
-    }
-    return '';
+  // ── 손 사이에 띄우는 하트 ─────────────────────────────
+  function heartHtml(h) {
+    if (!h) return '';
+    const [x, y, r] = h;
+    return `<path d="M${x} ${y + r * .95}
+      C${x - r * 1.35} ${y + r * .1} ${x - r * .95} ${y - r * .85} ${x} ${y - r * .18}
+      C${x + r * .95} ${y - r * .85} ${x + r * 1.35} ${y + r * .1} ${x} ${y + r * .95} Z"
+      fill="#E24A8B"/>`;
+  }
+
+  // ── 축구공 ────────────────────────────────────────────
+  function ballHtml(b) {
+    if (!b) return '';
+    const [x, y, r] = b;
+    return `<g><circle cx="${x}" cy="${y}" r="${r}" fill="#FFFFFF" stroke="#1F2B4D" stroke-width="1.3"/>
+      <path d="M${x} ${y - r * .52} l${r * .5} ${r * .38} l-${r * .19} ${r * .6} h-${r * .62} l-${r * .19} -${r * .6} z"
+        fill="#1F2B4D"/></g>`;
   }
 
   /**
@@ -228,29 +254,47 @@
     const close = scaled ? '</g>' : '';
     const crop = (tall > 1.15 && opts.crop !== false) ? 'chr-crop ' : '';
 
+    const P = POSE[L.po] || POSE[0];
+
+    // 팔 — 어깨에서 한 번, 팔꿈치에서 한 번 더 돈다 (중첩 회전 = 관절).
+    // 소매를 나중에 그려 팔뚝 위쪽을 덮는다.
+    const arm = (isL) => {
+      const px = isL ? 14.25 : 49.75;
+      const sa = isL ? P.arms[0] : P.arms[2];
+      const ea = isL ? P.arms[1] : P.arms[3];
+      return `<g transform="rotate(${sa} ${px} 41)">
+        <g transform="rotate(${ea} ${px} 53)">
+          <rect x="${isL ? 11.5 : 47}" y="50" width="5.5" height="18" rx="2.75" fill="${skin}"/>
+        </g>
+        <rect x="${isL ? 11 : 46.5}" y="37" width="6.5" height="15" rx="3" fill="${kit}"/>
+      </g>`;
+    };
+
+    // 다리 — 엉덩이·무릎 두 관절. 반바지를 나중에 그려 허벅지 위쪽을 덮는다.
+    const leg = (isL) => {
+      const hx = isL ? 24 : 40;
+      const kx = isL ? 24.25 : 39.75;
+      const ha = isL ? P.legs[0] : P.legs[2];
+      const ka = isL ? P.legs[1] : P.legs[3];
+      const x = isL ? 20 : 35.5;
+      return `<g transform="rotate(${ha} ${hx} 70)">
+        <g transform="rotate(${ka} ${kx} 91)">
+          <rect x="${x}" y="81" width="8.5" height="15" fill="${skin}"/>
+          <rect x="${x}" y="94" width="8.5" height="15" rx="1.5" fill="${socks}"/>
+          ${sockPattern(L.ss, sockTrim, isL)}
+          <rect x="${isL ? 17 : 34}" y="108" width="13" height="6.5" rx="3" fill="${boot}"/>
+        </g>
+        <rect x="${isL ? 17 : 33}" y="66" width="14" height="17" rx="2.5" fill="${bottom}"/>
+        ${bottomPattern(L.bs, bottomTrim, isL)}
+      </g>`;
+    };
+
     return `<svg class="chr ${crop}${opts.bounce === false ? '' : 'chr-bounce'}" viewBox="0 0 64 120"
       width="${size}" height="${Math.round(size * 120 / 64)}" style="animation-delay:${delay}s" aria-hidden="true">
       <defs><clipPath id="${uid}"><rect x="17" y="37" width="30" height="32" rx="3.5"/></clipPath></defs>
       ${open}
-      ${/* 다리 · 양말 · 축구화 */ ''}
-      <rect x="20" y="81" width="8.5" height="15" fill="${skin}"/>
-      <rect x="35.5" y="81" width="8.5" height="15" fill="${skin}"/>
-      <rect x="20" y="94" width="8.5" height="15" rx="1.5" fill="${socks}"/>
-      <rect x="35.5" y="94" width="8.5" height="15" rx="1.5" fill="${socks}"/>
-      ${sockPattern(L.ss, sockTrim)}
-      <rect x="17" y="108" width="13" height="6.5" rx="3" fill="${boot}"/>
-      <rect x="34" y="108" width="13" height="6.5" rx="3" fill="${boot}"/>
-
-      ${/* 반바지 — 가운데를 띄워 두 다리를 만든다 */ ''}
-      <rect x="17" y="66" width="14" height="17" rx="2.5" fill="${bottom}"/>
-      <rect x="33" y="66" width="14" height="17" rx="2.5" fill="${bottom}"/>
-      ${bottomPattern(L.bs, bottomTrim)}
-
-      ${/* 팔 · 소매 */ ''}
-      <rect x="11.5" y="50" width="5.5" height="18" rx="2.75" fill="${skin}"/>
-      <rect x="47" y="50" width="5.5" height="18" rx="2.75" fill="${skin}"/>
-      <rect x="11" y="37" width="6.5" height="15" rx="3" fill="${kit}"/>
-      <rect x="46.5" y="37" width="6.5" height="15" rx="3" fill="${kit}"/>
+      ${leg(true)}${leg(false)}
+      ${arm(true)}${arm(false)}
 
       ${/* 목 · 유니폼 */ ''}
       <rect x="28.5" y="30" width="7" height="8" fill="${skin}"/>
@@ -264,6 +308,7 @@
       <rect x="21" y="4" width="22" height="27" rx="6" fill="${skin}"/>
       ${hairHtml(L.hl, L.hs, hairC, band)}
       ${faceHtml(L.fa, skin)}
+      ${ballHtml(P.ball)}${heartHtml(P.heart)}
       ${close}
     </svg>`;
   }
