@@ -138,6 +138,38 @@ function go(id) { S.active = id; render(); }
 // ── #투표 ──────────────────────────────────────────────
 let voteForm = { name: null, first: null, second: null, pledge: '' };
 
+// 빈 칸 앞에서 막히지 않도록 — 눌러서 넣고 고쳐 쓰라고 던져주는 예시
+// 짧게 유지할 것 — 길어지면 모바일에서 한 줄에 하나씩만 들어가 칩 목록이 화면을 다 먹는다
+const PLEDGE_SAMPLES = [
+  '체력 자신 있어요 🏃',
+  '수비 책임질게요 🧱',
+  '골 넣을게요 ⚽',
+  '패스 잘 받아요 🙌',
+  '분위기 메이커 📣',
+];
+
+function usePledge(i) {
+  const t = PLEDGE_SAMPLES[i];
+  if (t == null) return;
+  voteForm.pledge = t;
+  const el = document.getElementById('pledgeInput');
+  if (el) { el.value = t; el.focus(); }
+  syncPledgeUi();
+}
+
+// 입력할 때마다 다시 그리면 포커스가 날아가서, 필요한 부분만 직접 건드린다
+function onPledgeInput(v) { voteForm.pledge = v; syncPledgeUi(); }
+
+function syncPledgeUi() {
+  const filled = voteForm.pledge.trim().length > 0;
+  const btn = document.getElementById('btnVote');
+  const help = document.getElementById('pledgeHelp');
+  const count = document.getElementById('pledgeCount');
+  if (btn) btn.disabled = !filled;
+  if (help) help.textContent = filled ? '좋아요! 이제 제출하면 끝이에요' : '한 줄만 적으면 투표가 완료돼요';
+  if (count) count.textContent = `${voteForm.pledge.length} / 40`;
+}
+
 function renderVote(pane) {
   const done = store.get('voted') === '1';
   const closed = S.cfg.phase !== 'VOTE';
@@ -166,7 +198,17 @@ function renderVote(pane) {
   pane.innerHTML = `
     <div class="card">
       <h3>1. 내 이름을 선택해주세요</h3>
-      <p class="hint" style="margin:4px 0 12px">완전 무기명이에요. 누가 어느 팀에 투표했는지는 아무도 확인할 수 없어요.</p>
+      <div class="privacy">
+        <span class="lock">🔒</span>
+        <div>
+          <span class="ptitle">고른 팀은 이름과 따로 저장돼요</span>
+          <p>“누가 투표했는지”와 “어느 팀을 골랐는지”는 서로 다른 곳에 나뉘어 담기고,
+             둘을 이어붙일 열쇠가 <strong>아예 없습니다</strong>.
+             투표한 시각도 남기지 않아서 순서로 되짚는 것도 불가능해요.</p>
+          <p>그래서 <strong>이걸 만든 원배도, 코치 누구도</strong> 내가 어느 팀을 골랐는지 볼 수 없어요.
+             마음 편히 솔직하게 골라주세요 💚</p>
+        </div>
+      </div>
       <div class="grid-players">
         ${S.players.map((p) => {
           const voted = S.marks.includes(p);
@@ -190,12 +232,21 @@ function renderVote(pane) {
     </div>
 
     <div class="card ${voteForm.first ? '' : 'hidden'}">
-      <h3>3. 각오 한마디 <span class="hint" style="font-weight:600">(선택)</span></h3>
-      <p class="hint" style="margin:4px 0 10px">코치들이 드래프트할 때 보게 되는 메시지예요. 이 항목만 이름이 함께 공개됩니다.</p>
-      <input class="input" id="pledgeInput" maxlength="40" placeholder="예) 뽑아주세요! 열심히 뛸게요 💪"
-             value="${esc(voteForm.pledge)}" oninput="voteForm.pledge=this.value">
-      <div class="hint mt">최대 40자</div>
-      <div class="mt"><button class="btn block" id="btnVote" onclick="submitVote()">투표 제출하기</button></div>
+      <h3>3. 각오 한마디 <span style="color:var(--red);font-size:13.5px">*필수</span></h3>
+      <p class="hint" style="margin:4px 0 10px">코치들이 드래프트하는 내내 이 한 줄을 보면서 선수를 고릅니다.
+        <b>나를 어필할 수 있는 유일한 칸</b>이에요. 이 항목만 이름이 함께 공개됩니다.</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        ${PLEDGE_SAMPLES.map((t, i) => `<button class="chip tap" onclick="usePledge(${i})">${esc(t)}</button>`).join('')}
+      </div>
+      <input class="input" id="pledgeInput" maxlength="40" placeholder="예) 뽑아주세요! 90분 내내 뛸 자신 있어요 💪"
+             value="${esc(voteForm.pledge)}" oninput="onPledgeInput(this.value)">
+      <div class="row mt">
+        <span class="hint" id="pledgeHelp">${voteForm.pledge.trim() ? '좋아요! 이제 제출하면 끝이에요' : '한 줄만 적으면 투표가 완료돼요'}</span>
+        <span class="spacer"></span>
+        <span class="hint" id="pledgeCount">${voteForm.pledge.length} / 40</span>
+      </div>
+      <div class="mt"><button class="btn block" id="btnVote" onclick="submitVote()"
+        ${voteForm.pledge.trim() ? '' : 'disabled'}>투표 제출하기</button></div>
       <div class="err mt hidden" id="voteErr"></div>
     </div>`;
 }
@@ -226,8 +277,9 @@ function pledgeCardHtml() {
   if (!name) return '';
   const cur = S.pledges[name] || '';
   return `<div class="card">
-    <h3>각오 한마디 ${cur ? '수정하기' : '남기기'}</h3>
-    <p class="hint" style="margin:4px 0 10px">코치들이 드래프트할 때 보게 됩니다. 언제든 고칠 수 있어요.</p>
+    <h3>각오 한마디 ${cur ? '고치기' : '남기기'}</h3>
+    <p class="hint" style="margin:4px 0 10px">드래프트가 끝나기 전까지 언제든 고칠 수 있어요.
+      더 좋은 문구가 떠올랐다면 지금 바꿔두세요.</p>
     <input class="input" id="pledgeLate" maxlength="40" value="${esc(cur)}" placeholder="예) 뽑아주세요! 열심히 뛸게요 💪">
     <div class="mt"><button class="btn small" onclick="savePledge()">저장</button>
       <span class="ok hidden" id="pledgeOk">저장했어요 ✓</span></div>
@@ -248,13 +300,20 @@ function pickTeam(slot, code) {
 async function submitVote() {
   const btn = document.getElementById('btnVote');
   const err = document.getElementById('voteErr');
+  const pledge = voteForm.pledge.trim();
   if (!voteForm.name || !voteForm.first) return;
+  if (!pledge) {
+    err.textContent = '각오 한마디를 한 줄 남겨주세요. 코치들이 이걸 보고 뽑아요!';
+    err.classList.remove('hidden');
+    document.getElementById('pledgeInput')?.focus();
+    return;
+  }
   btn.disabled = true; btn.textContent = '제출 중…'; err.classList.add('hidden');
   try {
+    // 각오를 먼저 저장한다 — 투표는 한 번뿐이라, 순서가 반대면
+    // 각오 저장이 실패했을 때 다시 넣을 방법이 없어진다.
+    await api.submitPledge(voteForm.name, pledge);
     await api.submitVote(voteForm.name, voteForm.first, voteForm.second);
-    if (voteForm.pledge.trim()) {
-      try { await api.submitPledge(voteForm.name, voteForm.pledge.trim()); } catch { /* 각오는 실패해도 투표는 유효 */ }
-    }
     store.set('name', voteForm.name); store.set('voted', '1');
     confetti();
     await load();
