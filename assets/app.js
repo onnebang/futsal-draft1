@@ -56,15 +56,18 @@
       phase: demoPhase,
       reveal_step: demoPhase === 'REVEAL' ? 3 : 0,
       draft_order: null, // 아래에서 데모 득표 집계로 계산 (실제와 동일하게 득표순)
-      progress_cursor: { DRAFT: 7, RESULT: 18, PREDICT: 18, MATCH: 18 }[demoPhase] || 0,
+      progress_cursor: { DRAFT: 7, RESULT: 23, PREDICT: 23, MATCH: 23 }[demoPhase] || 0,
     },
     teams: [
       { code: 'A', name: '민호경표팀', coaches: '민호 · 경표', color: '#36C5F0', sort: 1 },
       { code: 'B', name: '원배원언팀', coaches: '원배 · 원언', color: '#E01E5A', sort: 2 },
       { code: 'C', name: '경목준하팀', coaches: '경목 · 준하', color: '#2EB67D', sort: 3 },
     ],
-    players: ['가은', '나영', '다이', '민지', '서윤', '선민', '수연', '은재', '이지',
-      '지혜', '해수', '혜린', '혜선', '혜은', '혜진', '화인', '효린', '호원'],
+    // 참석 19명 + 불참 4명(송희·승민·영은·인선) = 총 23명. 불참자도 투표·각오·캐릭터는
+    // 그대로 하고, 드래프트만 참석자 뒤로 이어서 진행된다 (드래프트 자체를 막지 않음).
+    players: ['가은', '나영', '다이', '민지', '서윤', '선민', '송희', '수연', '승민', '영은',
+      '은재', '이지', '인선', '주원', '지혜', '해수', '혜린', '혜선', '혜은', '혜진', '호원', '화인', '효린'],
+    absentees: ['송희', '승민', '영은', '인선'],
     marks: ['나영', '해수', '가은', '혜린', '민지'],
     pledges: {
       해수: '이번엔 진짜 잘할 수 있어요!',
@@ -91,9 +94,9 @@
     ],
     ballots: [['A', 'C'], ['A', 'B'], ['B', 'A'], ['C', 'A'], ['A', 'C']],
     rosters: ['RESULT', 'PREDICT', 'MATCH'].includes(demoPhase) ? [
-      { team: 'A', members: ['가은', '나영', '민지', '해수', '혜린', '효린'], power: 2.1 },
-      { team: 'B', members: ['다이', '서윤', '선민', '수연', '혜선', '호원'], power: 2.0 },
-      { team: 'C', members: ['은재', '이지', '지혜', '혜은', '혜진', '화인'], power: 1.9 },
+      { team: 'A', members: ['가은', '나영', '수연', '지혜', '해수', '호원', '화인'], power: 3.7734 },
+      { team: 'B', members: ['다이', '서윤', '선민', '송희', '인선', '혜린', '혜진', '효린'], power: 3.9206 },
+      { team: 'C', members: ['민지', '승민', '영은', '은재', '이지', '주원', '혜선', '혜은'], power: 3.9001 },
     ] : [],
     comments: ['RESULT', 'PREDICT', 'MATCH'].includes(demoPhase) ? [
       { id: 'c1', team: 'A', nickname: '풉살고양이', body: '올해는 우승 각이다 🔥', created_at: new Date(Date.now() - 3.6e6).toISOString() },
@@ -113,9 +116,11 @@
          { id: 2, home: 'B', away: 'C', home_score: null, away_score: null, match_order: 2 },
          { id: 3, home: 'C', away: 'A', home_score: null, away_score: null, match_order: 3 }],
 
-    // 코치 보드 리허설용 상태
+    // 코치 보드 리허설용 상태 — 참석 19명을 먼저 뽑고, 같은 순번을 이어서 불참 4명을 뽑는다.
     coachState() {
-      const picks = ['해수', '다이', '은재', '이지', '서윤', '가은', '나영'].map((p, i) => ({
+      const picks = ['해수', '다이', '은재', '이지', '서윤', '가은', '나영', '선민', '주원', '혜선',
+        '효린', '호원', '지혜', '혜진', '민지', '혜은', '혜린', '화인', '수연',
+        '송희', '승민', '영은', '인선'].map((p, i) => ({
         seq: i, team: snakeTeam(['A', 'B', 'C'], i), player: p, by: 'demo',
       })).slice(0, this.config.progress_cursor);
       const asMaster = /admin/.test(location.pathname);
@@ -135,6 +140,7 @@
         ],
         pledges: this.pledges,
         players: this.players,
+        absentees: this.absentees,
         vote_count: this.marks.length,
       };
     },
@@ -388,26 +394,29 @@
     return Array.from({ length: C.TOTAL_PICKS }, (_, i) => snakeTeam(order, i));
   }
 
-  // 스네이크 트랙 — 6라운드 × 3픽을 팀 색 칸으로 그린다. 선수·코치 화면이 같이 쓴다.
+  // 스네이크 트랙 — 3픽씩 라운드로 묶어 팀 색 칸으로 그린다. 선수·코치 화면이 같이 쓴다.
   // 짝수 라운드는 오른쪽에서 왼쪽으로 흘러 "뱀" 모양이 눈에 보이게 한다.
+  // 총 인원이 3의 배수가 아니면 마지막 라운드는 1~2칸만 채워진다 — 존재하는 칸만 그린다.
   // 선수에게도 보여주는 화면이라 칸에는 팀만 적고, 누가 뽑혔는지는 절대 넣지 않는다.
   function snakeTrackHtml(order, cur, teams) {
     if (!order) return '';
     const teamOf = (c) => teams.find((t) => t.code === c) || { name: c, color: '#888' };
     const seq = snakeSeq(order);
     const rounds = [];
-    for (let r = 0; r < C.TOTAL_PICKS / 3; r++) {
-      const cells = [0, 1, 2].map((k) => {
-        const i = r * 3 + k;
-        const t = teamOf(seq[i]);
-        const state = i < cur ? 'done' : i === cur ? 'now' : 'todo';
-        return `<span class="st-cell ${state}" style="--tc:${t.color};--tc-bg:${t.color}24;--tc-bd:${t.color}66;--tc-glow:${t.color}73">
-          <span class="st-name">${esc(t.name)}</span>
-          ${state === 'done' ? '<span class="st-mark">✓</span>' : state === 'now' ? '<span class="st-mark st-now">지금</span>' : ''}
-        </span>`;
-      });
+    for (let r = 0; r < Math.ceil(C.TOTAL_PICKS / 3); r++) {
+      const cells = [0, 1, 2]
+        .filter((k) => r * 3 + k < C.TOTAL_PICKS)
+        .map((k) => {
+          const i = r * 3 + k;
+          const t = teamOf(seq[i]);
+          const state = i < cur ? 'done' : i === cur ? 'now' : 'todo';
+          return `<span class="st-cell ${state}" style="--tc:${t.color};--tc-bg:${t.color}24;--tc-bd:${t.color}66;--tc-glow:${t.color}73">
+            <span class="st-name">${esc(t.name)}</span>
+            ${state === 'done' ? '<span class="st-mark">✓</span>' : state === 'now' ? '<span class="st-mark st-now">지금</span>' : ''}
+          </span>`;
+        });
       const rev = r % 2 === 1;
-      const roundDone = cur >= (r + 1) * 3;
+      const roundDone = cur >= Math.min((r + 1) * 3, C.TOTAL_PICKS);
       rounds.push(`<div class="st-round ${rev ? 'rev' : ''} ${roundDone ? 'done' : ''}">
         <span class="st-label">${r + 1}R</span>
         ${cells.join('<span class="st-arrow"></span>')}
