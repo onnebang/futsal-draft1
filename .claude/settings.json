@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/autopush.sh",
+            "timeout": 60,
+            "statusMessage": "작업 브랜치에 자동 커밋·푸시 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
