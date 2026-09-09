@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 하반기 내부매치 드래프트</title>
 <meta name="description" content="FC풉살 2026 하반기 내부매치 드래프트 — 선호팀 투표부터 팀 발표, 우승 예측까지">
-<link rel="stylesheet" href="assets/style.css?v=344910b2">
+<link rel="stylesheet" href="assets/style.css?v=7cbfe578">
 </head>
 <body>
 
@@ -39,9 +39,9 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=344910b2"></script>
-<script src="assets/character.js?v=344910b2"></script>
-<script src="assets/app.js?v=344910b2"></script>
+<script src="assets/config.js?v=7cbfe578"></script>
+<script src="assets/character.js?v=7cbfe578"></script>
+<script src="assets/app.js?v=7cbfe578"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
         LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop } = window.FDApp;
@@ -720,13 +720,16 @@ function renderTeam(pane) {
     return;
   }
   const me = myName();
+  const topTeam = S.cfg.draft_order ? S.cfg.draft_order[0] : null;
   pane.innerHTML = S.teams.map((t) => {
     const r = S.rosters.find((x) => x.team === t.code);
     const members = r ? r.members : [];
+    const isTop = t.code === topTeam;
     return `<div class="card">
       <div class="roster-head">
         <span class="team-swatch" style="background:${t.color}"></span>
-        <span><span class="tname" style="font-size:17px;font-weight:900">${esc(t.name)}</span><br>
+        <span><span class="tname" style="font-size:17px;font-weight:900">${esc(t.name)}
+          ${isTop ? '<span class="pride-badge">🥇 투표 1위</span>' : ''}</span><br>
           <span class="hint">${esc(t.coaches)} 코치 · ${members.length}명</span></span>
       </div>
       <div class="roster-grid">
@@ -863,6 +866,7 @@ function renderMatch(pane) {
   const done = S.matches.filter((m) => m.home_score != null).length;
   const all = done === S.matches.length && done > 0;
   const champ = all && S.standings.length ? S.standings[0].code : null;
+  const topTeam = S.cfg.draft_order ? S.cfg.draft_order[0] : null;
 
   pane.innerHTML = `
     ${champ ? `<div class="reveal-stage">
@@ -873,7 +877,8 @@ function renderMatch(pane) {
 
     <div class="card">
       <h3>경기 결과</h3>
-      <p class="hint" style="margin:4px 0 12px">${done} / ${S.matches.length}경기 종료 · 5:5 · 12분</p>
+      <p class="hint" style="margin:4px 0 12px">${done} / ${S.matches.length}경기 종료 · 5:5 · 12분
+        ${topTeam ? `· 경기 순서는 <b style="color:${teamOf(topTeam).color}">${esc(teamOf(topTeam).name)}</b>이 정했어요 🥇` : ''}</p>
       ${S.matches.map((m) => {
         const h = teamOf(m.home), a = teamOf(m.away);
         const played = m.home_score != null;
@@ -905,7 +910,8 @@ function renderMatch(pane) {
               const t = teamOf(r.code);
               return `<tr style="border-top:1.5px solid var(--border)">
                 <td style="padding:9px 4px">
-                  <span style="font-weight:700">${i + 1}. ${esc(t.name)}</span></td>
+                  <span style="font-weight:700">${i + 1}. ${esc(t.name)}</span>
+                  ${r.code === topTeam ? '<span class="pride-badge" style="margin-left:5px">🥇</span>' : ''}</td>
                 <td style="text-align:center">${r.played}</td>
                 <td style="text-align:center">${r.win}</td>
                 <td style="text-align:center">${r.draw}</td>
