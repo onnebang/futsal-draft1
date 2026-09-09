@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 드래프트 보드 (코치 전용)</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="assets/style.css?v=7cbfe578">
+<link rel="stylesheet" href="assets/style.css?v=96a33e7d">
 </head>
 <body>
 
 <!-- 로그인 게이트 -->
 <div class="gate" id="gate">
+  <div id="kakaoExitGate"></div>
   <div class="gate-card">
     <h1>⚽ 코치 드래프트 보드</h1>
     <p class="hint">개별 전달받은 8자리 암호를 입력해주세요.</p>
@@ -44,6 +45,7 @@
 
   <main class="main">
     <div class="topbar">
+      <div id="kakaoExit"></div>
       <div class="ws-name">⚽ FC풉살 <span style="font-weight:400;opacity:.7;font-size:13px" id="tbWho"></span></div>
       <div class="topbar-channels">
         <button class="ch active"><span class="hash">#</span>드래프트보드</button>
@@ -60,14 +62,17 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=7cbfe578"></script>
-<script src="assets/character.js?v=7cbfe578"></script>
-<script src="assets/app.js?v=7cbfe578"></script>
+<script src="assets/config.js?v=96a33e7d"></script>
+<script src="assets/character.js?v=96a33e7d"></script>
+<script src="assets/app.js?v=96a33e7d"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc,
-        LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop } = window.FDApp;
+        LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop, isTyping, kakaoExitBannerHtml } = window.FDApp;
 const C = window.FD;
 const { charSvg } = window.FDChar;
+
+// 카카오톡 인앱 브라우저면 배너로 탈출 경로를 보여준다 (게이트 · 보드 둘 다)
+document.getElementById('kakaoExitGate').innerHTML = kakaoExitBannerHtml();
 
 let PASS = null;
 let ST = null;
@@ -93,8 +98,12 @@ async function login() {
     await loadLooks();
     document.getElementById('gate').classList.add('hidden');
     document.getElementById('board').classList.remove('hidden');
+    document.getElementById('kakaoExit').innerHTML = kakaoExitBannerHtml();
     render();
-    setInterval(refresh, 5000);
+    setInterval(() => {
+      if (isTyping()) return; // 각오·매치 순서 입력 중엔 재렌더를 건너뛴다 — 자판이 닫히는 문제 방지
+      refresh();
+    }, 5000);
   } catch (e) {
     err.textContent = e.message; err.classList.remove('hidden');
   } finally { btn.disabled = false; btn.textContent = '입장하기'; }
