@@ -410,6 +410,7 @@
   const LOOK_GROUPS = [
     { title: '몸', rows: [
       { k: 'h',  name: '키' },
+      { k: 'bd', name: '체형' },
       { k: 'sk', name: '피부색' },
       { k: 'fa', name: '표정' },
     ] },
@@ -417,6 +418,7 @@
       { k: 'hl', name: '길이' },
       { k: 'hs', name: '스타일' },
       { k: 'hc', name: '색상' },
+      { k: 'fh', name: '수염' },
     ] },
     { title: '상의', rows: [
       { k: 'ts', name: '무늬' },
@@ -449,6 +451,20 @@
     const cur = (look || {})[key];   // 호출부가 편집 중인 룩을 항상 넘긴다
     const palette = F.PALETTE[key];
     const labels = F.LABEL[key];
+
+    // 등번호는 0~999 라 칩으로 늘어놓을 수 없다. 직접 입력받는다.
+    // 입력 중 전체 렌더를 돌리면 포커스가 날아가므로 setter 대신 전용 핸들러를 쓴다.
+    if (key === 'nu') {
+      return `<div class="look-row">
+        <div class="look-label">${esc(label)}</div>
+        <div class="look-opts">
+          <input class="input num" id="numInput" type="text" inputmode="numeric" maxlength="3"
+                 placeholder="없음" value="${cur ? cur : ''}"
+                 oninput="onNumInput(this)">
+          <span class="hint" style="align-self:center">0~999 · 비우면 없음</span>
+        </div>
+      </div>`;
+    }
   
     const opts = Array.from({ length: n }, (_, i) => {
       const sel = i === cur ? ' sel' : '';
@@ -462,6 +478,29 @@
       <div class="look-label">${esc(label)}</div>
       <div class="look-opts">${opts}</div>
     </div>`;
+  }
+
+  // 등번호 입력칸을 숫자 세 자리로 정리하고 값을 돌려준다.
+  // 입력칸의 글자도 즉시 걷어내야 "12x" 같은 게 남지 않는다.
+  function clampNum(elOrValue) {
+    const el = elOrValue && elOrValue.tagName ? elOrValue : null;
+    const raw = el ? el.value : elOrValue;
+    const d = String(raw == null ? '' : raw).replace(/[^0-9]/g, '').slice(0, 3);
+    if (el && el.value !== d) el.value = d;
+    return d === '' ? 0 : Math.min(999, parseInt(d, 10));
+  }
+
+  // 커스터마이저 미리보기를 화면 위에 고정한다.
+  // 컨트롤이 19줄이라 스크롤하면 캐릭터가 시야에서 사라져, 뭘 바꿨는지 볼 수가 없다.
+  // 모바일은 topbar 가 sticky 라 그 높이만큼 내려서 붙여야 겹치지 않는다.
+  function syncStickyTop() {
+    const tb = document.querySelector('.topbar');
+    const h = tb && getComputedStyle(tb).display !== 'none' ? Math.round(tb.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--sticky-top', h + 'px');
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', syncStickyTop);
+    window.addEventListener('orientationchange', syncStickyTop);
   }
 
   // 이름 → 고정 색상 (아바타용)
@@ -566,5 +605,5 @@
   }
 
   window.FDApp = { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
-                   LOOK_GROUPS, lookRowHtml, DEMO };
+                   LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop, DEMO };
 })();

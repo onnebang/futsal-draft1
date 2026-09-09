@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 드래프트 보드 (코치 전용)</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="assets/style.css?v=f01e9c2d">
+<link rel="stylesheet" href="assets/style.css?v=344910b2">
 </head>
 <body>
 
@@ -60,12 +60,12 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=f01e9c2d"></script>
-<script src="assets/character.js?v=f01e9c2d"></script>
-<script src="assets/app.js?v=f01e9c2d"></script>
+<script src="assets/config.js?v=344910b2"></script>
+<script src="assets/character.js?v=344910b2"></script>
+<script src="assets/app.js?v=344910b2"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc,
-        LOOK_GROUPS, lookRowHtml } = window.FDApp;
+        LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop } = window.FDApp;
 const C = window.FD;
 const { charSvg } = window.FDChar;
 
@@ -164,6 +164,7 @@ function render() {
       ${myCardHtml()}
       ${playerViewCard()}
       ${done ? resultCard() : ''}`;
+  syncStickyTop();   // topbar 높이를 재서 고정 미리보기가 겹치지 않게 한다
     return;
   }
 
@@ -239,6 +240,7 @@ function render() {
 
     ${done ? resultCard() : ''}
     <div class="overlay hidden" id="modal"></div>`;
+  syncStickyTop();
 }
 
 function poolCardHtml(p) {
@@ -271,7 +273,7 @@ function myCardHtml() {
       이 캐릭터와 각오를 봅니다. 코치도 표를 받는 입장이에요.</p>
 
     <div class="row" style="align-items:center;gap:10px">
-      ${charSvg(me.name, { size: 56, look: myCard.look, crop: false })}
+      <span id="lookPreview">${charSvg(me.name, { size: 56, look: myCard.look, crop: false })}</span>
       <div style="flex:1;min-width:0">
         <div style="font-weight:800">${esc(me.name)} 코치
           <span class="hint" style="font-weight:600">· ${esc(t.name)}</span></div>
@@ -281,8 +283,10 @@ function myCardHtml() {
       </div>
     </div>
 
-    ${cardOpen ? LOOK_GROUPS.map((g) => `<div class="look-group">${esc(g.title)}</div>
-      ${g.rows.map((r) => lookRowHtml(r.k, r.name, myCard.look, 'setCardLook')).join('')}`).join('') : ''}
+    ${cardOpen ? `<div class="look-editor"><div class="stage-stick"><div class="chr-stage" id="lookPreviewBig">
+        ${charSvg(me.name, { size: 96, look: myCard.look, crop: false })}</div></div>
+      ${LOOK_GROUPS.map((g) => `<div class="look-group">${esc(g.title)}</div>
+        ${g.rows.map((r) => lookRowHtml(r.k, r.name, myCard.look, 'setCardLook')).join('')}`).join('')}</div>` : ''}
 
     <div class="row mt" style="gap:8px">
       <button class="btn small" id="btnCard" onclick="saveCard()">저장하기</button>
@@ -311,7 +315,19 @@ function playerViewCard() {
   </div>`;
 }
 
-function toggleCard() { cardOpen = !cardOpen; render(); }
+// 등번호는 입력 중이라 전체 렌더를 돌리면 포커스가 날아간다.
+// 값만 반영하고 미리보기 두 곳만 갈아끼운다.
+function onNumInput(el) {
+  if (!myCard) return;
+  myCard.look.nu = clampNum(el);
+  const me = ST.coach;
+  const small = document.getElementById('lookPreview');
+  const big = document.getElementById('lookPreviewBig');
+  if (small) small.innerHTML = charSvg(me.name, { size: 56, look: myCard.look, crop: false });
+  if (big) big.innerHTML = charSvg(me.name, { size: 96, look: myCard.look, crop: false });
+}
+
+function toggleCard() { cardOpen = !cardOpen; render(); syncStickyTop(); }
 function setCardLook(k, v) { myCard.look[k] = v; render(); }
 function randomCardLook() { myCard.look = window.FDChar.randomLook(); render(); }
 

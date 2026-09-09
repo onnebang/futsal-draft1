@@ -194,6 +194,23 @@ button, input, textarea { font-family: inherit; }
 .chip.tap:active { transform: translateY(0); }
 
 /* ── 캐릭터 커스터마이저 ───────────────────── */
+/* 커스터마이저 미리보기 고정 — 컨트롤 19줄을 스크롤하는 동안에도 캐릭터가 보인다.
+   --sticky-top 은 app.js 가 topbar 높이를 재서 넣는다 (모바일에서만 0이 아니다). */
+/* 래퍼 — sticky 는 부모 박스 안에서만 붙으므로, 미리보기와 컨트롤을 한 부모로 묶는다 */
+.look-editor { display: block; }
+.stage-stick {
+  position: sticky; top: var(--sticky-top, 0px); z-index: 18;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), 0 12px 14px -12px rgba(91, 43, 94, .45);
+}
+.stage-stick.card { padding: 0 20px 6px; }
+.stage-stick + .card { margin-top: 14px; }
+.look-opts .input.num {
+  width: 96px; text-align: center; font-weight: 800; font-size: 16px;
+  padding: 8px 10px;
+}
+
 .chr-stage {
   display: flex; justify-content: center; align-items: flex-end;
   min-height: 268px; padding: 44px 0 4px;
