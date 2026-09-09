@@ -219,12 +219,28 @@ button, input, textarea { font-family: inherit; }
 .look-opts .opt:hover { border-color: var(--blue); color: var(--ink); }
 .look-opts .opt.sel { background: var(--aubergine-dark); border-color: var(--aubergine-dark); color: #fff; }
 
-/* ── 미투표자 목록 ─────────────────────────── */
-.waiting { display: flex; flex-wrap: wrap; gap: 7px; }
-.waiting .w {
-  padding: 6px 13px; border-radius: var(--pill);
-  background: #f2edf6; color: var(--muted);
-  font-size: 13.5px; font-weight: 700;
+/* ── 선수 대기장 ───────────────────────────── */
+/* 도착한 사람은 캐릭터가 튀고 각오를 달고 있다.
+   아직 안 온 사람은 흐린 실루엣 — 빈자리로 "몇 명 남았다"를 말한다. */
+.lounge { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; align-items: start; }
+.lp {
+  text-align: center; padding: 9px 5px 11px;
+  border: 2px solid var(--border); border-radius: var(--radius); background: #fff;
+}
+.lp.away { opacity: .38; background: #f7f5f8; filter: grayscale(.65); }
+.lp .nm { font-weight: 700; font-size: 14.5px; margin-top: 2px; }
+.lp .tag { font-size: 10.5px; font-weight: 700; color: var(--faint); margin-top: 3px; }
+.lp .bub {
+  margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--muted);
+  background: #f6f2f9; border-radius: 12px 12px 12px 3px;
+  padding: 6px 8px; line-height: 1.35; word-break: break-word;
+}
+
+/* 투표 2단계 안에서 컨트롤 묶음을 나누는 작은 제목 */
+.look-group {
+  margin: 16px 0 2px; padding-top: 12px;
+  border-top: 2px solid var(--border);
+  font-size: 13px; font-weight: 800; color: var(--aubergine);
 }
 .chip.live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1.4s ease-in-out infinite; }
 
