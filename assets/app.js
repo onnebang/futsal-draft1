@@ -79,6 +79,16 @@
       가은: { h: 3, hl: 0, hs: 3, hc: 0, sk: 2, fa: 5, ts: 4, tc: 2, bs: 0, bc: 0, ss: 1, sc: 5, bo: 1 },
       혜린: { h: 2, hl: 2, hs: 4, hc: 7, sk: 1, fa: 3, ts: 2, tc: 4, bs: 2, bc: 2, ss: 0, sc: 6, bo: 2 },
     },
+    coachCards: [
+      { coach_id: 'mh', coach_name: '민호', team: 'A', pledge: '제발 우리 팀 뽑아주세요! 간식 쏩니다 🍫',
+        look: { h: 4, hs: 9, hc: 3, sk: 1, fa: 5, ts: 1, tc: 0, bc: 0, bo: 1, po: 3, ac: 5, ah: 1 } },
+      { coach_id: 'kp', coach_name: '경표', team: 'A', pledge: '수비 조직은 제가 책임집니다', look: null },
+      { coach_id: 'wb', coach_name: '원배', team: 'B', pledge: '우리 팀 오면 후회 없어요 🔥',
+        look: { h: 3, hs: 0, hc: 0, sk: 2, fa: 1, ts: 2, tc: 1, bc: 4, bo: 3, po: 7, ac: 2, ah: 0 } },
+      { coach_id: 'wo', coach_name: '원언', team: 'B', pledge: null, look: null },
+      { coach_id: 'gm', coach_name: '경목', team: 'C', pledge: '재미는 확실히 보장합니다 😎', look: null },
+      { coach_id: 'jh', coach_name: '준하', team: 'C', pledge: null, look: null },
+    ],
     ballots: [['A', 'C'], ['A', 'B'], ['B', 'A'], ['C', 'A'], ['A', 'C']],
     rosters: ['RESULT', 'PREDICT', 'MATCH'].includes(demoPhase) ? [
       { team: 'A', members: ['가은', '나영', '민지', '해수', '혜린', '효린'], power: 2.1 },
@@ -215,6 +225,27 @@
     async submitLook(name, look) {
       if (DEMO) { demo.looks[name] = look; return { ok: true }; }
       return rpc('submit_look', { p_name: name, p_look: look });
+    },
+
+    // 코치 카드 — 코치도 표를 받는 입장이라 캐릭터와 각오로 어필한다.
+    // 읽기는 누구나(암호는 이 테이블에 없다), 쓰기는 자기 암호로만.
+    async coachCards() {
+      if (DEMO) return demo.coachCards.map((c) => ({ ...c }));
+      return rest('draft_coach_cards?select=coach_id,coach_name,team,look,pledge');
+    },
+
+    async coachSetCard(pass, look, pledge) {
+      if (DEMO) {
+        const c = demo.coachCards.find((x) => x.coach_id === 'mh');
+        if (c) { if (look) c.look = look; if (pledge != null) c.pledge = pledge; }
+        return { ok: true };
+      }
+      return rpc('coach_set_card', { p_passcode: pass, p_look: look, p_pledge: pledge });
+    },
+
+    // 이름 → 룩 맵으로 바꿔 FDChar.setLooks 에 그대로 넘길 수 있게 한다
+    looksFromCards(cards) {
+      return Object.fromEntries((cards || []).filter((c) => c.look).map((c) => [c.coach_name, c.look]));
     },
 
     async voteTally() {
@@ -375,6 +406,64 @@
     return `<div class="snake-track">${rounds.join('')}</div>`;
   }
 
+  // ── 캐릭터 커스터마이저 (선수 #내캐릭터 · 코치 내 카드 공용) ──
+  const LOOK_GROUPS = [
+    { title: '몸', rows: [
+      { k: 'h',  name: '키' },
+      { k: 'sk', name: '피부색' },
+      { k: 'fa', name: '표정' },
+    ] },
+    { title: '머리', rows: [
+      { k: 'hl', name: '길이' },
+      { k: 'hs', name: '스타일' },
+      { k: 'hc', name: '색상' },
+    ] },
+    { title: '상의', rows: [
+      { k: 'ts', name: '무늬' },
+      { k: 'tc', name: '색상' },
+      { k: 'nu', name: '등번호' },
+    ] },
+    { title: '하의', rows: [
+      { k: 'bs', name: '무늬' },
+      { k: 'bc', name: '색상' },
+    ] },
+    { title: '양말 · 신발', rows: [
+      { k: 'ss', name: '양말 무늬' },
+      { k: 'sc', name: '양말 색상' },
+      { k: 'bo', name: '신발 색상' },
+    ] },
+    { title: '꾸미기', rows: [
+      { k: 'po', name: '자세' },
+      { k: 'ac', name: '액세서리' },
+      { k: 'ah', name: '소품 색' },
+      { k: 'ol', name: '테두리' },
+      { k: 'bg', name: '배경색' },
+    ] },
+  ];
+
+  // 투표 2단계와 #내캐릭터 채널이 같은 컨트롤을 쓴다.
+  // look 은 편집 중인 객체, setter 는 클릭 시 부를 전역 함수 이름.
+  function lookRowHtml(key, label, look, setter = 'setLook') {
+    const F = window.FDChar;
+    const n = F.SIZE[key];
+    const cur = (look || {})[key];   // 호출부가 편집 중인 룩을 항상 넘긴다
+    const palette = F.PALETTE[key];
+    const labels = F.LABEL[key];
+  
+    const opts = Array.from({ length: n }, (_, i) => {
+      const sel = i === cur ? ' sel' : '';
+      return palette
+        ? `<button class="sw${sel}${palette[i] === 'transparent' ? ' none' : ''}" style="background:${palette[i]}"
+             onclick="${setter}('${key}',${i})" aria-label="${label} ${i + 1}"></button>`
+        : `<button class="opt${sel}" onclick="${setter}('${key}',${i})">${esc(labels ? labels[i] : String(i + 1))}</button>`;
+    }).join('');
+  
+    return `<div class="look-row">
+      <div class="look-label">${esc(label)}</div>
+      <div class="look-opts">${opts}</div>
+    </div>`;
+  }
+
   // 이름 → 고정 색상 (아바타용)
   const AVATAR_COLORS = ['#36C5F0', '#2EB67D', '#ECB22E', '#E01E5A', '#4A154B', '#1264A3', '#DE7C29'];
   function colorFor(name) {
@@ -476,5 +565,6 @@
     })(start);
   }
 
-  window.FDApp = { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti, DEMO };
+  window.FDApp = { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
+                   LOOK_GROUPS, lookRowHtml, DEMO };
 })();

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 드래프트 보드 (코치 전용)</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="assets/style.css?v=f051ecff">
+<link rel="stylesheet" href="assets/style.css?v=f01e9c2d">
 </head>
 <body>
 
@@ -60,11 +60,12 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=f051ecff"></script>
-<script src="assets/character.js?v=f051ecff"></script>
-<script src="assets/app.js?v=f051ecff"></script>
+<script src="assets/config.js?v=f01e9c2d"></script>
+<script src="assets/character.js?v=f01e9c2d"></script>
+<script src="assets/app.js?v=f01e9c2d"></script>
 <script>
-const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc } = window.FDApp;
+const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc,
+        LOOK_GROUPS, lookRowHtml } = window.FDApp;
 const C = window.FD;
 const { charSvg } = window.FDChar;
 
@@ -72,6 +73,9 @@ let PASS = null;
 let ST = null;
 let TEAMS = [];
 let selected = null;
+let CARDS = [];        // 코치 6명의 카드 (내 것 포함)
+let myCard = null;     // 편집 중인 내 카드 { look, pledge }
+let cardOpen = false;  // 꾸미기 패널 접힘/펼침
 
 async function login() {
   const btn = document.getElementById('btnLogin');
@@ -84,8 +88,7 @@ async function login() {
     PASS = pass;
     store.set('coachpass', pass);
     TEAMS = await api.teams();
-    // 선수가 직접 꾸민 캐릭터를 코치 보드에도 그대로 보여준다
-    try { window.FDChar.setLooks(await api.looks()); } catch { /* 없으면 기본 모습 */ }
+    await loadLooks();
     document.getElementById('gate').classList.add('hidden');
     document.getElementById('board').classList.remove('hidden');
     render();
@@ -98,9 +101,26 @@ async function login() {
 async function refresh() {
   try {
     ST = await api.coachState(PASS);
-    try { window.FDChar.setLooks(await api.looks()); } catch { /* 없으면 기본 모습 */ }
+    await loadLooks();
     render();
   } catch { /* 일시적 오류는 무시 */ }
+}
+
+// 선수·코치가 직접 꾸민 캐릭터를 코치 보드에도 그대로 보여준다.
+// 코치 이름은 선수 이름과 겹치지 않아 한 맵에 같이 담아도 안전하다.
+async function loadLooks() {
+  try {
+    const [looks, cards] = await Promise.all([
+      api.looks().catch(() => ({})), api.coachCards().catch(() => []),
+    ]);
+    CARDS = cards;
+    window.FDChar.setLooks({ ...looks, ...api.looksFromCards(cards) });
+    const mine = cards.find((c) => c.coach_id === ST.coach.id);
+    // 편집 중이 아닐 때만 서버 값으로 맞춘다 — 5초 폴링이 입력을 덮지 않게
+    if (mine && !cardOpen) {
+      myCard = { look: mine.look || window.FDChar.getLook(ST.coach.name), pledge: mine.pledge || '' };
+    }
+  } catch { /* 없으면 기본 모습 */ }
 }
 
 const teamOf = (c) => TEAMS.find((t) => t.code === c) || { name: c, color: '#888', coaches: '' };
@@ -156,6 +176,8 @@ function render() {
       </div>
       <div class="mt">${snakeTrackHtml(order, cur, TEAMS)}</div>
     </div>` : ''}
+
+    ${myCardHtml()}
 
     <div class="board">
       <div class="card">
@@ -217,6 +239,67 @@ function poolCardHtml(p) {
         ${w.kind === 'super' ? '🔥' : ''}${esc(w.coach_name)}</span>`).join('')}</div>` : ''}
     ${pledge ? `<span class="bubble">💬 ${esc(pledge)}</span>` : ''}
   </div>`;
+}
+
+// ── 내 카드 (코치도 표를 받는다) ──────────────────────
+// 선수 투표 화면의 팀 선택 아래에 이 캐릭터와 각오가 그대로 나간다.
+function myCardHtml() {
+  if (!myCard) return '';
+  const me = ST.coach;
+  const t = teamOf(me.team);
+  return `<div class="card mt">
+    <div class="row">
+      <h3 style="margin:0">내 카드</h3>
+      <span class="spacer"></span>
+      <button class="btn small ghost" onclick="toggleCard()">${cardOpen ? '접기' : '꾸미기'}</button>
+    </div>
+    <p class="hint" style="margin:4px 0 10px">선수들이 <b>투표 화면</b>에서 팀을 고를 때
+      이 캐릭터와 각오를 봅니다. 코치도 표를 받는 입장이에요.</p>
+
+    <div class="row" style="align-items:center;gap:10px">
+      ${charSvg(me.name, { size: 56, look: myCard.look, crop: false })}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800">${esc(me.name)} 코치
+          <span class="hint" style="font-weight:600">· ${esc(t.name)}</span></div>
+        <input class="input mt" id="coachPledge" maxlength="40"
+               placeholder="예) 제발 우리 팀 뽑아주세요! 간식 쏩니다 🍫"
+               value="${esc(myCard.pledge)}" oninput="myCard.pledge=this.value">
+      </div>
+    </div>
+
+    ${cardOpen ? LOOK_GROUPS.map((g) => `<div class="look-group">${esc(g.title)}</div>
+      ${g.rows.map((r) => lookRowHtml(r.k, r.name, myCard.look, 'setCardLook')).join('')}`).join('') : ''}
+
+    <div class="row mt" style="gap:8px">
+      <button class="btn small" id="btnCard" onclick="saveCard()">저장하기</button>
+      ${cardOpen ? '<button class="btn small ghost" onclick="randomCardLook()">🎲 랜덤</button>' : ''}
+      <span class="ok hidden" id="cardOk">저장했어요 ✓</span>
+      <span class="err hidden" id="cardErr"></span>
+    </div>
+  </div>`;
+}
+
+function toggleCard() { cardOpen = !cardOpen; render(); }
+function setCardLook(k, v) { myCard.look[k] = v; render(); }
+function randomCardLook() { myCard.look = window.FDChar.randomLook(); render(); }
+
+async function saveCard() {
+  const btn = document.getElementById('btnCard');
+  const ok = document.getElementById('cardOk');
+  const err = document.getElementById('cardErr');
+  btn.disabled = true; btn.textContent = '저장 중…';
+  ok.classList.add('hidden'); err.classList.add('hidden');
+  try {
+    await api.coachSetCard(PASS, myCard.look, myCard.pledge.trim());
+    await loadLooks();
+    render();
+    document.getElementById('cardOk')?.classList.remove('hidden');
+  } catch (e) {
+    err.textContent = e.message; err.classList.remove('hidden');
+  } finally {
+    const b2 = document.getElementById('btnCard');
+    if (b2) { b2.disabled = false; b2.textContent = '저장하기'; }
+  }
 }
 
 function resultCard() {
