@@ -289,56 +289,93 @@ function progressHtml() {
 
 // 대기장 — 18명이 한 화면에 오밀조밀 모여 선다.
 // 도착한 사람은 색이 있고 튀며, 아직 안 온 사람은 흐린 실루엣.
-// 각오는 카드마다 달지 않고(세로로 너무 길어진다) 위쪽 말풍선 한 칸에서
-// 한 명씩 돌아가며 말한다. 누르면 그 사람이 바로 말한다.
-let speaker = null;     // 지금 말풍선에 나오는 사람
-let speakHold = 0;      // 탭으로 고른 뒤 자동 순환을 잠시 멈추는 시각
+// 각오 말풍선은 캐릭터 머리 위에 뜬다. 줄마다 말풍선 레인이 하나 있고,
+// 레인은 왼쪽 반·오른쪽 반 두 자리라 여러 명이 동시에 말해도 절대 겹치지 않는다.
+const COLS = 6;
+let laneSpeaker = {};   // '행-반쪽' → 이름  (예: '1L': '해수')
+let laneHold = {};      // 탭으로 고른 레인은 잠시 자동 순환을 멈춘다
+let laneTick = 0;
 let speakTimer = null;
 
-function talkers() { return S.players.filter((p) => S.marks.includes(p) && S.pledges[p]); }
+const laneKey = (i) => `${Math.floor(i / COLS)}${(i % COLS) < COLS / 2 ? 'L' : 'R'}`;
+const talkersIn = (key) => S.players.filter((p, i) => laneKey(i) === key && S.marks.includes(p) && S.pledges[p]);
+const laneKeys = () => [...new Set(S.players.map((_, i) => laneKey(i)))];
 
 function startSpeakLoop() {
   if (speakTimer) return;
   speakTimer = setInterval(() => {
-    if (Date.now() < speakHold) return;
-    const t = talkers();
+    const keys = laneKeys();
+    if (!keys.length) return;
+    // 레인을 하나씩 돌아가며 다음 사람으로 넘긴다 — 한 번에 하나만 바뀌어 눈이 편하다
+    const key = keys[laneTick++ % keys.length];
+    if (Date.now() < (laneHold[key] || 0)) return;
+    const t = talkersIn(key);
     if (!t.length) return;
-    speaker = t[(t.indexOf(speaker) + 1) % t.length];
-    paintSpeech();
-  }, 3200);
+    laneSpeaker[key] = t[(t.indexOf(laneSpeaker[key]) + 1) % t.length];
+    paintLanes();
+  }, 2800);
 }
 
 function speak(name) {
-  speaker = name;
-  speakHold = Date.now() + 8000;
-  paintSpeech();
+  const key = laneKey(S.players.indexOf(name));
+  laneSpeaker[key] = name;
+  laneHold[key] = Date.now() + 8000;
+  paintLanes();
 }
 
-function speechHtml() {
-  const n = speaker;
-  if (!n) {
-    const t = talkers();
-    return `<span class="hint">${t.length ? '…' : '아직 각오를 남긴 사람이 없어요. 첫 번째가 되어보세요!'}</span>`;
-  }
-  const arrived = S.marks.includes(n);
+function bubbleHtml(name) {
+  const i = S.players.indexOf(name);
+  if (i < 0) return '';
+  const col = i % COLS;
+  const half = col < COLS / 2 ? 'L' : 'R';
+  const arrived = S.marks.includes(name);
   const body = !arrived ? '아직 안 왔어요. 카톡으로 살짝 알려주세요 🙌'
-             : (S.pledges[n] || '도착! 각오는 아직이에요');
-  return `<span class="who">${esc(n)}</span><span class="say">${esc(body)}</span>`;
+             : (S.pledges[name] || '도착! 각오는 아직이에요');
+  // 꼬리는 그 사람의 열 가운데를 가리킨다 (반쪽 안에서의 위치)
+  const tail = ((col % (COLS / 2)) + 0.5) / (COLS / 2) * 100;
+  return `<div class="bub ${half}" style="--tail:${tail.toFixed(1)}%">
+    <b>${esc(name)}</b> ${esc(body)}
+  </div>`;
+}
+
+function laneHtml(row) {
+  return ['L', 'R'].map((h) => {
+    const n = laneSpeaker[`${row}${h}`];
+    return n ? bubbleHtml(n) : '';
+  }).join('');
 }
 
 // 전체 렌더 없이 말풍선과 강조만 갈아끼운다 — 10초마다 오는 재렌더와 무관하게 부드럽다
-function paintSpeech() {
-  const el = document.getElementById('speech');
-  if (!el) return;
-  el.innerHTML = speechHtml();
-  document.querySelectorAll('.crowd .cp').forEach((b) => b.classList.toggle('talking', b.dataset.name === speaker));
+function paintLanes() {
+  document.querySelectorAll('.lane').forEach((el) => { el.innerHTML = laneHtml(Number(el.dataset.row)); });
+  const talking = new Set(Object.values(laneSpeaker));
+  document.querySelectorAll('.crowd .cp').forEach((b) => b.classList.toggle('talking', talking.has(b.dataset.name)));
 }
 
 function loungeHtml(title) {
   const here = S.players.filter((p) => S.marks.includes(p));
   const left = S.players.filter((p) => !S.marks.includes(p));
-  if (!speaker || !S.players.includes(speaker)) speaker = talkers()[0] || null;
+
+  // 레인마다 첫 화자를 채우고, 사라진 사람(초기화 등)은 비운다
+  laneKeys().forEach((key) => {
+    const t = talkersIn(key);
+    if (!t.includes(laneSpeaker[key])) laneSpeaker[key] = t[0] || null;
+  });
   startSpeakLoop();
+
+  const rows = [];
+  for (let r = 0; r * COLS < S.players.length; r++) {
+    const cells = S.players.slice(r * COLS, (r + 1) * COLS).map((n) => {
+      const arrived = S.marks.includes(n);
+      const talking = Object.values(laneSpeaker).includes(n);
+      return `<button class="cp ${arrived ? '' : 'away'} ${talking ? 'talking' : ''}"
+                data-name="${esc(n)}" onclick="speak('${esc(n)}')">
+        ${charSvg(n, { size: 32, bounce: arrived })}
+        <span class="nm">${esc(n)}</span>
+      </button>`;
+    }).join('');
+    rows.push(`<div class="lane" data-row="${r}">${laneHtml(r)}</div><div class="cells">${cells}</div>`);
+  }
 
   return `<div class="card">
     <div class="row">
@@ -346,20 +383,10 @@ function loungeHtml(title) {
       <span class="spacer"></span>
       <span class="chip ${left.length ? 'live' : ''}">${here.length} / ${S.players.length}명</span>
     </div>
-    <div class="speech" id="speech">${speechHtml()}</div>
-    <div class="crowd">
-      ${S.players.map((n) => {
-        const arrived = S.marks.includes(n);
-        return `<button class="cp ${arrived ? '' : 'away'} ${n === speaker ? 'talking' : ''}"
-                  data-name="${esc(n)}" onclick="speak('${esc(n)}')">
-          ${charSvg(n, { size: 32, bounce: arrived })}
-          <span class="nm">${esc(n)}</span>
-        </button>`;
-      }).join('')}
-    </div>
+    <div class="crowd">${rows.join('')}</div>
     <p class="hint" style="margin:10px 0 0">${left.length === 0
       ? '전원 도착! 이제 마감과 발표만 남았어요 🎉'
-      : `<b>${left.length}명</b>이 아직이에요 · 캐릭터를 누르면 각오가 보여요`}</p>
+      : `<b>${left.length}명</b>이 아직이에요 · 캐릭터를 누르면 그 사람이 말해요`}</p>
     ${left.length ? `<div class="mt"><button class="btn small ghost" onclick="copyNudge()">카톡에 붙여넣을 문구 복사</button></div>` : ''}
   </div>`;
 }
@@ -639,6 +666,8 @@ function renderDraft(pane) {
   const pct = Math.round((cur / C.TOTAL_PICKS) * 100);
   const order = S.cfg.draft_order;
   const nowTeam = !done && order && cur < C.TOTAL_PICKS ? teamOf(snakeTeam(order, cur)) : null;
+  const nextTeam = nowTeam && cur + 1 < C.TOTAL_PICKS ? teamOf(snakeTeam(order, cur + 1)) : null;
+  const round = Math.floor(cur / 3) + 1;
 
   pane.innerHTML = `
     <div class="card">
@@ -649,13 +678,28 @@ function renderDraft(pane) {
       </div>
       <div class="progress mt"><i style="width:${pct}%"></i></div>
       <h3 class="mt">${done ? '드래프트가 끝났어요!' : '🔒 지금 코치들이 팀을 고르고 있어요'}</h3>
+
+      ${done ? '' : nowTeam ? `
+      <div class="turn">
+        <div class="turn-now" style="--tc:${nowTeam.color}">
+          <span class="turn-label">지금 차례</span>
+          <span class="turn-team">${esc(nowTeam.name)}</span>
+          <span class="turn-sub">${round}라운드</span>
+        </div>
+        ${nextTeam ? `<div class="turn-next" style="--tc:${nextTeam.color}">
+          <span class="turn-label">다음</span>
+          <span class="turn-team">${esc(nextTeam.name)}</span>
+        </div>` : `<div class="turn-next"><span class="turn-label">다음</span><span class="turn-team">마지막이에요</span></div>`}
+      </div>` : `
+      <div class="turn"><div class="turn-next" style="flex:1">
+        <span class="turn-label">지금 차례</span>
+        <span class="turn-team">순서 확정을 기다리는 중</span>
+      </div></div>`}
+
       <p class="hint mt">
         ${done
           ? '<b># 우리팀</b> 채널에서 확정 명단을 확인하세요.'
-          : (nowTeam
-              ? `지금은 <b style="color:${nowTeam.color}">${esc(nowTeam.name)}</b> 차례예요.`
-              : '곧 시작됩니다.') +
-            ' 드래프트 과정은 코치들만 볼 수 있고, <b>누가 몇 번째로 뽑혔는지는 어디에도 공개되지 않아요.</b>'}
+          : '드래프트 과정은 코치들만 볼 수 있고, <b>누가 몇 번째로 뽑혔는지는 어디에도 공개되지 않아요.</b>'}
       </p>
       ${done ? `<div class="mt"><button class="btn" onclick="go('team')">확정 명단 보기</button></div>` : ''}
     </div>
