@@ -84,6 +84,8 @@ async function login() {
     PASS = pass;
     store.set('coachpass', pass);
     TEAMS = await api.teams();
+    // 선수가 직접 꾸민 캐릭터를 코치 보드에도 그대로 보여준다
+    try { window.FDChar.setLooks(await api.looks()); } catch { /* 없으면 기본 모습 */ }
     document.getElementById('gate').classList.add('hidden');
     document.getElementById('board').classList.remove('hidden');
     render();
@@ -94,7 +96,11 @@ async function login() {
 }
 
 async function refresh() {
-  try { ST = await api.coachState(PASS); render(); } catch { /* 일시적 오류는 무시 */ }
+  try {
+    ST = await api.coachState(PASS);
+    try { window.FDChar.setLooks(await api.looks()); } catch { /* 없으면 기본 모습 */ }
+    render();
+  } catch { /* 일시적 오류는 무시 */ }
 }
 
 const teamOf = (c) => TEAMS.find((t) => t.code === c) || { name: c, color: '#888', coaches: '' };

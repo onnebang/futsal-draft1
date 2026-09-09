@@ -1,23 +1,94 @@
 // FC풉살 — 플랫 지오메트릭 축구 캐릭터 생성기
 // 2014 월드컵 "GOL!" 포스터 톤: 외곽선 없는 납작한 색면, 절제된 점 눈,
-// 유니폼(줄무늬·소매·카라) · 반바지 · 양말 · 축구화까지 색 블록으로 구성.
-// 이름을 넣으면 항상 같은 캐릭터가 나옵니다 (해시 기반).
+// 유니폼(무늬·소매·카라) · 반바지 · 양말 · 축구화까지 색 블록으로 구성.
+//
+// 캐릭터는 두 가지 방법으로 결정된다.
+//   1) 저장된 커스텀 룩이 있으면 그걸 쓴다 (setLooks 로 등록)
+//   2) 없으면 이름 해시로 만든다 — 같은 이름은 항상 같은 캐릭터
+//
+// 룩 객체는 전부 팔레트 인덱스라 jsonb 한 줄로 저장된다.
+//   h 키 · hl 머리길이 · hs 머리스타일 · hc 머리색 · sk 피부색 · fa 표정
+//   ts 상의스타일 · tc 상의색 · bs 하의스타일 · bc 하의색
+//   ss 양말스타일 · sc 양말색 · bo 신발색
 (function () {
+  // ── 팔레트 ────────────────────────────────────────────
   const SKIN = ['#F7C9A3', '#EFB68B', '#D89B6C', '#B4784B', '#8A5433', '#5E3620'];
-  const HAIR = ['#2B2119', '#42301F', '#6B4A2A', '#141414', '#8C6239', '#C68642', '#3E2A2A'];
-  const KIT = ['#2D7DD2', '#E0333F', '#22A06B', '#F2B705', '#7A4FCF', '#EE7B30', '#12A5C6', '#E24A8B'];
-  const SHORTS = ['#E9EBEE', '#1F2B4D', '#2B2B2B'];
+  const HAIR = ['#2B2119', '#42301F', '#6B4A2A', '#141414', '#8C6239', '#C68642', '#B0446B', '#4A6FA5'];
+  const KIT = ['#2D7DD2', '#E0333F', '#22A06B', '#F2B705', '#7A4FCF', '#EE7B30', '#12A5C6', '#E24A8B', '#1F2B4D', '#ECEDEF'];
+  const BOTTOM = ['#1F2B4D', '#E9EBEE', '#2B2B2B', '#2D7DD2', '#E0333F', '#22A06B', '#F2B705', '#7A4FCF', '#EE7B30', '#E24A8B'];
+  const SOCK = ['#E9EBEE', '#1F2B4D', '#2B2B2B', '#2D7DD2', '#E0333F', '#22A06B', '#F2B705', '#7A4FCF', '#EE7B30', '#E24A8B'];
   const BOOT = ['#E4E6E9', '#1F1F1F', '#F2B705', '#E0333F', '#22A06B', '#EE7B30'];
   const BAND = ['#F2B705', '#E24A8B', '#ECEDEF', '#22A06B'];
 
-  // 키가 커서 프레임을 뚫고 나가는 선수 — 얼굴 윗부분이 잘린 채로 보인다
-  // (값 = 확대 배율. 바닥을 기준으로 커지므로 발은 그대로, 머리만 위로 넘어간다)
-  const TALL = { '다이': 1.25 };
+  // 키 — 바닥을 기준으로 한 확대 배율. 마지막 칸은 프레임 위로 머리가 잘린다.
+  const HEIGHT = [0.9, 0.97, 1.04, 1.12, 1.25];
+
+  // 머리 길이별 옆머리가 내려오는 지점 (얼굴 아래 = 유니폼 위로 흘러내림)
+  const HAIR_LEN = [17, 25, 35, 50];
+
+  const LABEL = {
+    h: ['아담', '조금 작게', '보통', '조금 크게', '아주 크게'],
+    hl: ['짧게', '단발', '어깨', '길게'],
+    hs: ['기본', '포니테일', '똥머리', '곱슬', '헤어밴드', '앞머리'],
+    fa: ['기본', '웃음', '윙크', '신남', '진지', '뿌듯'],
+    ts: ['무지', '세로줄', '가로줄', '사선', '반반'],
+    bs: ['무지', '옆줄', '밑단'],
+    ss: ['무지', '윗단', '줄무늬'],
+  };
+
+  const PALETTE = { hc: HAIR, sk: SKIN, tc: KIT, bc: BOTTOM, sc: SOCK, bo: BOOT };
+  const SIZE = { h: 5, hl: 4, hs: 6, hc: 8, sk: 6, fa: 6, ts: 5, tc: 10, bs: 3, bc: 10, ss: 3, sc: 10, bo: 6 };
+  const KEYS = Object.keys(SIZE);
+
+  // 키가 커서 프레임을 뚫고 나가는 선수 — 커스텀 룩이 없을 때만 적용된다
+  const TALL = { '다이': 4 };
+
+  let LOOKS = {};
+  let SEQ = 0;
 
   function hash(str) {
     let h = 2166136261;
     for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
     return h >>> 0;
+  }
+
+  // 이름만으로 만드는 기본 캐릭터. 부호 없는 시프트(>>>)를 써야 한다 —
+  // >> 를 쓰면 해시가 2^31 을 넘을 때 인덱스가 음수가 되고 색이 검게 죽는다.
+  function fromHash(name) {
+    const h = hash(name || '?');
+    return {
+      h: TALL[name] != null ? TALL[name] : 1 + (h >>> 27) % 3,
+      hl: (h >>> 4) % SIZE.hl,
+      hs: (h >>> 9) % SIZE.hs,
+      hc: (h >>> 3) % SIZE.hc,
+      sk: h % SIZE.sk,
+      fa: (h >>> 24) % SIZE.fa,
+      ts: (h >>> 12) % SIZE.ts,
+      tc: (h >>> 6) % SIZE.tc,
+      bs: (h >>> 15) % SIZE.bs,
+      bc: (h >>> 17) % SIZE.bc,
+      ss: (h >>> 20) % SIZE.ss,
+      sc: (h >>> 23) % SIZE.sc,
+      bo: (h >>> 18) % SIZE.bo,
+    };
+  }
+
+  // 저장된 값이 팔레트 밖으로 나가지 않게 자른다 (DB에 뭐가 들었든 안전하게)
+  function normalize(look, base) {
+    const out = Object.assign({}, base);
+    if (!look || typeof look !== 'object') return out;
+    KEYS.forEach((k) => {
+      const v = Number(look[k]);
+      if (Number.isInteger(v) && v >= 0 && v < SIZE[k]) out[k] = v;
+    });
+    return out;
+  }
+
+  function lookFor(name, override) {
+    const base = fromHash(name);
+    if (override) return normalize(override, base);
+    if (LOOKS[name]) return normalize(LOOKS[name], base);
+    return base;
   }
 
   // 밝은 유니폼 위에는 진한 무늬를, 진한 유니폼 위에는 흰 무늬를 얹는다
@@ -27,77 +98,137 @@
     return (r * 299 + g * 587 + b * 114) / 1000 > 165 ? '#1F2B4D' : '#E9EBEE';
   }
 
-  // 머리 모양 6종 — 얼굴(x20~44, y8~36) 기준
-  function hair(kind, c, bandColor) {
-    const cap = `<rect x="19.5" y="2.5" width="25" height="12.5" rx="6" fill="${c}"/>`;
+  // ── 머리 ──────────────────────────────────────────────
+  // 길이(옆머리가 내려오는 깊이)와 스타일(얹는 장식)을 따로 조합한다.
+  function hairHtml(len, style, color, band) {
+    const bottom = HAIR_LEN[len];
+    const cap = `<rect x="19.5" y="2.5" width="25" height="12.5" rx="6" fill="${color}"/>`;
+    const sideH = Math.max(bottom - 9, 0);
+    const side = sideH > 0
+      ? `<rect x="19" y="9" width="4.5" height="${sideH}" rx="2" fill="${color}"/>
+         <rect x="40.5" y="9" width="4.5" height="${sideH}" rx="2" fill="${color}"/>`
+      : '';
+
+    let extra = '';
+    switch (style) {
+      case 1: // 포니테일 — 뒤로 묶어 옆으로 흘린다
+        extra = `<circle cx="47.5" cy="17" r="5" fill="${color}"/>
+                 <rect x="45.5" y="17" width="4.5" height="15" rx="2.25" fill="${color}"/>`;
+        break;
+      case 2: // 똥머리 — viewBox 위로 잘리지 않게 살짝 내려 그린다
+        extra = `<circle cx="32" cy="3.5" r="6" fill="${color}"/>`;
+        break;
+      case 3: // 곱슬 볼륨 — 캡을 키워 덮는다
+        return `<rect x="16.5" y="0" width="31" height="21" rx="10.5" fill="${color}"/>${side}`;
+      case 4: // 헤어밴드
+        extra = `<rect x="19.5" y="10.5" width="25" height="3.8" fill="${band}"/>`;
+        break;
+      case 5: // 앞머리(뱅) — 이마를 덮는다
+        extra = `<rect x="20" y="6" width="24" height="7" rx="3" fill="${color}"/>`;
+        break;
+      default:
+        break;
+    }
+    return `${cap}${side}${extra}`;
+  }
+
+  // ── 표정 ──────────────────────────────────────────────
+  function faceHtml(kind, skin) {
+    const ink = '#241F1E';
+    const eyeL = 27.5, eyeR = 36.5, eyeY = 21;
+    const dot = (x) => `<circle cx="${x}" cy="${eyeY}" r="1.9" fill="${ink}"/>`;
+    const arc = (x) => `<path d="M${x - 2.6} ${eyeY + 1} q2.6 -3.4 5.2 0" stroke="${ink}" stroke-width="1.7"
+                          fill="none" stroke-linecap="round"/>`;
+    const line = (x) => `<rect x="${x - 2.4}" y="${eyeY - .8}" width="4.8" height="1.7" rx=".85" fill="${ink}"/>`;
+    const caret = (x) => `<path d="M${x - 2.6} ${eyeY + 1.4} l2.6 -3 2.6 3" stroke="${ink}" stroke-width="1.7"
+                            fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const smile = `<path d="M29.4 26.2 q2.6 2.6 5.2 0" stroke="${ink}" stroke-width="1.5"
+                     fill="none" stroke-linecap="round"/>`;
+    const openMouth = `<ellipse cx="32" cy="26.4" rx="3" ry="2.6" fill="${ink}"/>`;
+    const flat = `<rect x="29.6" y="26" width="4.8" height="1.6" rx=".8" fill="${ink}"/>`;
+
     switch (kind) {
-      case 1: // 포니테일
-        return `${cap}<rect x="19.5" y="9" width="4" height="12" fill="${c}"/>
-                <rect x="40.5" y="9" width="4" height="12" fill="${c}"/>
-                <circle cx="47.5" cy="17" r="5" fill="${c}"/>
-                <rect x="45.5" y="17" width="4.5" height="14" rx="2.25" fill="${c}"/>`;
-      case 2: // 긴 생머리
-        return `${cap}<rect x="18.5" y="9" width="4.5" height="26" rx="2" fill="${c}"/>
-                <rect x="41" y="9" width="4.5" height="26" rx="2" fill="${c}"/>`;
-      case 3: // 번(똥머리)
-        return `<circle cx="32" cy="2" r="5.5" fill="${c}"/>${cap}
-                <rect x="19.5" y="9" width="4" height="9" fill="${c}"/>
-                <rect x="40.5" y="9" width="4" height="9" fill="${c}"/>`;
-      case 4: // 곱슬 볼륨
-        return `<rect x="16.5" y="0" width="31" height="21" rx="10.5" fill="${c}"/>
-                <rect x="19" y="9" width="4.5" height="13" rx="2" fill="${c}"/>
-                <rect x="40.5" y="9" width="4.5" height="13" rx="2" fill="${c}"/>`;
-      case 5: // 헤어밴드
-        return `${cap}<rect x="19.5" y="9" width="4" height="11" fill="${c}"/>
-                <rect x="40.5" y="9" width="4" height="11" fill="${c}"/>
-                <rect x="19.5" y="10.5" width="25" height="3.8" fill="${bandColor}"/>`;
-      default: // 단발
-        return `${cap}<rect x="19.5" y="9" width="4" height="15" rx="1.5" fill="${c}"/>
-                <rect x="40.5" y="9" width="4" height="15" rx="1.5" fill="${c}"/>`;
+      case 1: return arc(eyeL) + arc(eyeR) + smile;                 // 웃음
+      case 2: return dot(eyeL) + line(eyeR) + smile;                // 윙크
+      case 3: return dot(eyeL) + dot(eyeR) + openMouth;             // 신남
+      case 4: return line(eyeL) + line(eyeR) + flat;                // 진지
+      case 5: return caret(eyeL) + caret(eyeR) + smile;             // 뿌듯
+      default: return dot(eyeL) + dot(eyeR);                        // 기본
     }
   }
 
-  // 유니폼 무늬 5종 (저지 영역으로 클리핑)
-  function kitPattern(kind, trim, uid) {
+  // ── 상의 무늬 (저지 영역으로 클리핑) ──────────────────
+  function topPattern(kind, trim, uid) {
     const inner = {
       1: `<rect x="21" y="37" width="4.5" height="32" fill="${trim}"/>
           <rect x="29.8" y="37" width="4.5" height="32" fill="${trim}"/>
           <rect x="38.5" y="37" width="4.5" height="32" fill="${trim}"/>`,
       2: `<rect x="17" y="48" width="30" height="8.5" fill="${trim}"/>`,
-      3: `<rect x="8" y="37" width="8.5" height="48" transform="rotate(-32 32 53)" fill="${trim}"/>`,
+      3: `<rect x="27" y="21" width="10" height="64" transform="rotate(-34 32 53)" fill="${trim}"/>`,
       4: `<rect x="32" y="37" width="15" height="32" fill="${trim}"/>`,
     }[kind];
-    if (!inner) return '';
-    return `<g clip-path="url(#${uid})">${inner}</g>`;
+    return inner ? `<g clip-path="url(#${uid})">${inner}</g>` : '';
+  }
+
+  // ── 하의 무늬 ─────────────────────────────────────────
+  function bottomPattern(kind, trim) {
+    if (kind === 1) { // 옆줄
+      return `<rect x="17" y="66" width="3.4" height="17" fill="${trim}"/>
+              <rect x="43.6" y="66" width="3.4" height="17" fill="${trim}"/>`;
+    }
+    if (kind === 2) { // 밑단 띠
+      return `<rect x="17" y="78.5" width="14" height="4.5" fill="${trim}"/>
+              <rect x="33" y="78.5" width="14" height="4.5" fill="${trim}"/>`;
+    }
+    return '';
+  }
+
+  // ── 양말 무늬 ─────────────────────────────────────────
+  function sockPattern(kind, trim) {
+    if (kind === 1) { // 윗단 띠
+      return `<rect x="20" y="94" width="8.5" height="4.5" fill="${trim}"/>
+              <rect x="35.5" y="94" width="8.5" height="4.5" fill="${trim}"/>`;
+    }
+    if (kind === 2) { // 가로 줄무늬
+      return [0, 5, 10].map((d) =>
+        `<rect x="20" y="${95.5 + d}" width="8.5" height="2.4" fill="${trim}"/>
+         <rect x="35.5" y="${95.5 + d}" width="8.5" height="2.4" fill="${trim}"/>`).join('');
+    }
+    return '';
   }
 
   /**
    * 캐릭터 SVG 문자열.
    * @param {string} name  선수 이름 (같은 이름 = 항상 같은 캐릭터)
-   * @param {object} opts  { size, jersey, number, bounce }
+   * @param {object} opts  { size, jersey, number, bounce, look, crop }
+   *   look 을 직접 넘기면 저장된 룩·해시를 무시한다 (커스터마이저 미리보기용)
+   *   crop:false 면 키가 커도 머리를 자르지 않는다 — 편집 중에는 얼굴이 보여야 한다
    */
   function charSvg(name, opts = {}) {
-    const h = hash(name || '?');
+    const L = lookFor(name, opts.look);
     const size = opts.size || 48;
-    const uid = 'fdk' + h.toString(36);
+    const uid = 'fdk' + (++SEQ).toString(36);
 
-    const skin = SKIN[h % SKIN.length];
-    const hairC = HAIR[(h >>> 3) % HAIR.length];
-    const kit = opts.jersey || KIT[(h >>> 6) % KIT.length];
+    const skin = SKIN[L.sk];
+    const hairC = HAIR[L.hc];
+    const kit = opts.jersey || KIT[L.tc];
     const trim = trimFor(kit);
-    const hairKind = (h >>> 9) % 6;
-    const patKind = (h >>> 12) % 5;
-    const shorts = SHORTS[(h >>> 15) % SHORTS.length];
-    const boot = BOOT[(h >>> 18) % BOOT.length];
-    const band = BAND[(h >>> 21) % BAND.length];
-    const socks = ((h >>> 23) % 2) ? kit : trim;
-    const delay = ((h >>> 25) % 12) / 12; // 다 같이 튀지 않도록 시작을 흩뜨림
-    const tall = opts.tall || TALL[name] || 1;
-    // 바닥(32,120)을 축으로 확대 → 발은 제자리, 머리는 프레임 위로 넘어가 잘린다
-    const open = tall > 1 ? `<g transform="translate(32,120) scale(${tall}) translate(-32,-120)">` : '';
-    const close = tall > 1 ? '</g>' : '';
+    const bottom = BOTTOM[L.bc];
+    const bottomTrim = trimFor(bottom);
+    const socks = SOCK[L.sc];
+    const sockTrim = trimFor(socks);
+    const boot = BOOT[L.bo];
+    const band = BAND[hash(name || '?') % BAND.length];
 
-    return `<svg class="chr ${tall > 1 ? 'chr-crop ' : ''}${opts.bounce === false ? '' : 'chr-bounce'}" viewBox="0 0 64 120"
+    const tall = HEIGHT[L.h];
+    const delay = ((hash(name || '?') >>> 25) % 12) / 12; // 다 같이 튀지 않도록 시작을 흩뜨림
+    // 바닥(32,120)을 축으로 확대 → 발은 제자리, 머리만 위아래로 움직인다
+    const scaled = tall !== 1;
+    const open = scaled ? `<g transform="translate(32,120) scale(${tall}) translate(-32,-120)">` : '';
+    const close = scaled ? '</g>' : '';
+    const crop = (tall > 1.15 && opts.crop !== false) ? 'chr-crop ' : '';
+
+    return `<svg class="chr ${crop}${opts.bounce === false ? '' : 'chr-bounce'}" viewBox="0 0 64 120"
       width="${size}" height="${Math.round(size * 120 / 64)}" style="animation-delay:${delay}s" aria-hidden="true">
       <defs><clipPath id="${uid}"><rect x="17" y="37" width="30" height="32" rx="3.5"/></clipPath></defs>
       ${open}
@@ -106,12 +237,14 @@
       <rect x="35.5" y="81" width="8.5" height="15" fill="${skin}"/>
       <rect x="20" y="94" width="8.5" height="15" rx="1.5" fill="${socks}"/>
       <rect x="35.5" y="94" width="8.5" height="15" rx="1.5" fill="${socks}"/>
+      ${sockPattern(L.ss, sockTrim)}
       <rect x="17" y="108" width="13" height="6.5" rx="3" fill="${boot}"/>
       <rect x="34" y="108" width="13" height="6.5" rx="3" fill="${boot}"/>
 
       ${/* 반바지 — 가운데를 띄워 두 다리를 만든다 */ ''}
-      <rect x="17" y="66" width="14" height="17" rx="2.5" fill="${shorts}"/>
-      <rect x="33" y="66" width="14" height="17" rx="2.5" fill="${shorts}"/>
+      <rect x="17" y="66" width="14" height="17" rx="2.5" fill="${bottom}"/>
+      <rect x="33" y="66" width="14" height="17" rx="2.5" fill="${bottom}"/>
+      ${bottomPattern(L.bs, bottomTrim)}
 
       ${/* 팔 · 소매 */ ''}
       <rect x="11.5" y="50" width="5.5" height="18" rx="2.75" fill="${skin}"/>
@@ -122,19 +255,30 @@
       ${/* 목 · 유니폼 */ ''}
       <rect x="28.5" y="30" width="7" height="8" fill="${skin}"/>
       <rect x="17" y="37" width="30" height="32" rx="3.5" fill="${kit}"/>
-      ${kitPattern(patKind, trim, uid)}
+      ${topPattern(L.ts, trim, uid)}
       <rect x="28" y="37" width="8" height="3.5" rx="1.5" fill="${trim}"/>
       ${opts.number ? `<text x="32" y="59" text-anchor="middle" font-size="11"
         font-family="-apple-system, Pretendard, sans-serif" font-weight="700" fill="${trim}">${opts.number}</text>` : ''}
 
-      ${/* 얼굴 */ ''}
+      ${/* 얼굴 · 머리 */ ''}
       <rect x="21" y="4" width="22" height="27" rx="6" fill="${skin}"/>
-      ${hair(hairKind, hairC, band)}
-      <circle cx="27.5" cy="21.5" r="1.9" fill="#241F1E"/>
-      <circle cx="36.5" cy="21.5" r="1.9" fill="#241F1E"/>
+      ${hairHtml(L.hl, L.hs, hairC, band)}
+      ${faceHtml(L.fa, skin)}
       ${close}
     </svg>`;
   }
 
-  window.FDChar = { charSvg, hash };
+  // 저장된 룩 등록 — 이후 모든 charSvg 호출에 자동 반영된다
+  function setLooks(map) { LOOKS = map || {}; }
+  function getLook(name) { return lookFor(name); }
+  function randomLook() {
+    const out = {};
+    KEYS.forEach((k) => { out[k] = Math.floor(Math.random() * SIZE[k]); });
+    return out;
+  }
+
+  window.FDChar = {
+    charSvg, hash, setLooks, getLook, randomLook,
+    fromHash, normalize, KEYS, SIZE, LABEL, PALETTE, HEIGHT,
+  };
 })();

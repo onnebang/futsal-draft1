@@ -17,7 +17,7 @@ python3 -m http.server 8099
 `?demo=1` 을 붙이면 **네트워크 없이** 가짜 데이터로 전 화면이 돌아간다. 디자인 작업은 여기서 하면 된다.
 
 ```
-index.html?demo=1&phase=VOTE      투표
+index.html?demo=1&phase=VOTE      투표 (+ #내캐릭터 커스터마이저)
 index.html?demo=1&phase=REVEAL    프듀101식 발표
 index.html?demo=1&phase=DRAFT     선수 대기 화면
 index.html?demo=1&phase=RESULT    팀 명단
@@ -31,12 +31,12 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
 
 | 파일 | 역할 |
 |---|---|
-| `index.html` | 선수 18명용. 슬랙식 채널(#투표 #결과발표 #드래프트 #우리팀 #예측 #응원 #경기)로 단계 전환 |
+| `index.html` | 선수 18명용. 슬랙식 채널(#투표 #내캐릭터 #결과발표 #드래프트 #우리팀 #예측 #응원 #경기)로 단계 전환 |
 | `coach.html` | 코치 6명용 드래프트 보드 (암호 게이트) |
 | `admin.html` | 마스터용 운영 콘솔 (암호 게이트) |
 | `assets/config.js` | Supabase URL/공개키, 팀 컬러, 에러 메시지 |
 | `assets/app.js` | API 레이어 + 데모 모드 + 공통 유틸 |
-| `assets/character.js` | 이름 해시로 캐릭터 SVG 생성 |
+| `assets/character.js` | 캐릭터 SVG 생성 — 저장된 룩이 있으면 그걸, 없으면 이름 해시로 |
 | `assets/style.css` | 디자인 시스템 전부 |
 | `assets/fonts/` | Pretendard 서브셋 (직접 포함) |
 
@@ -46,11 +46,21 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
   애플 기기는 시스템 폰트, 그 외는 저장소에 넣어둔 Pretendard.
   ⚠️ 폰트를 CDN(jsDelivr·Google Fonts)에서 불러오지 말 것 — 일부 환경에서 차단돼
   맑은 고딕으로 떨어졌던 전력이 있다. 웹폰트가 필요하면 `assets/fonts/`에 직접 넣는다.
+  ⚠️ 폰트뿐 아니라 **브라우저로 나가는 모든 리소스**가 저장소 안에 있어야 한다.
+  축포도 같은 이유로 CDN 라이브러리를 걷어내고 `app.js` 안 캔버스 구현으로 바꿨다.
+  외부 `<script src>` · `<link href>` 를 새로 추가하지 말 것.
 - **컬러**: 오버진 퍼플 계열 셸 + 팀 3색 (A `#36C5F0` / B `#E01E5A` / C `#2EB67D`).
 - **형태**: 라운드 크게(카드 22px, 버튼 pill), 눌리는 입체 버튼.
-- **캐릭터**: 플랫 지오메트릭 축구 선수. 유니폼 무늬 5종 × 머리 6종 × 피부 6종을
-  이름 해시로 조합. `charSvg(name, { size, jersey, number, bounce })`.
-  `TALL` 맵에 이름을 넣으면 프레임 위로 잘릴 만큼 키가 커진다 (다이 = 1.25).
+- **캐릭터**: 플랫 지오메트릭 축구 선수. 13가지를 선수가 직접 고른다 —
+  키 · 머리(길이/스타일/색) · 피부색 · 표정 · 상의(무늬/색) · 하의(무늬/색) ·
+  양말(무늬/색) · 신발색. 전부 팔레트 인덱스라 jsonb 한 줄로 저장된다.
+  `charSvg(name, { size, jersey, number, bounce, look, crop })`.
+  저장된 룩은 `FDChar.setLooks(map)` 으로 한 번 등록하면 이후 모든 호출에 자동 반영되므로,
+  화면마다 룩을 넘겨줄 필요가 없다. 편집 미리보기는 `crop:false` 로 머리 잘림을 끈다.
+  룩이 없으면 이름 해시로 만든다 — 같은 이름은 항상 같은 캐릭터.
+  `TALL` 맵에 이름을 넣으면 기본 키가 커진다 (다이 = 가장 큰 칸, 머리가 프레임 위로 잘림).
+- **모션**: `.chr-bounce` — 두 박자 둠칫둠칫. 착지에서 눌리고 뜰 때 늘어나는
+  스쿼시&스트레치로 리듬을 만든다. `prefers-reduced-motion` 에서는 꺼진다.
 
 ## 절대 깨면 안 되는 것
 
@@ -67,6 +77,9 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
 
 `draft_` 접두사 테이블. 프로젝트 `qjvuxwldlviknhiydoxw`.
 
+- `draft_pledges` · `draft_looks` 는 **이름 공개가 의도**라 SELECT 정책만 열려 있다.
+  쓰기는 `submit_pledge` / `submit_look` 을 통해서만 가능하고, `submit_look` 은
+  팔레트 범위 밖의 값·모르는 키·숫자가 아닌 값을 서버에서 전부 버린다.
 - `draft_picks` · `draft_wishes` · `draft_coaches` · `draft_ballots` 는
   **RLS 정책이 아예 없다** = anon 접근 전면 차단. 이게 요구사항 4·5의 방어선이므로
   편의를 위해 정책을 추가하지 말 것.
@@ -74,7 +87,8 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
   `coach_state / coach_pick / coach_undo / coach_wish`,
   `master_set_phase / master_set_reveal_step / master_lock_order / master_publish /
    master_set_score / master_hide_comment / master_reset`,
-  `submit_vote / submit_pledge / submit_prediction / submit_comment / vote_tally / standings`
+  `submit_vote / submit_pledge / submit_look / submit_prediction / submit_comment /
+   vote_tally / standings`
 - 픽 확정은 `draft_config` 행을 잠그는 원자적 트랜잭션 (동시 픽 유실 방지).
 - 코치 암호는 저장소에 두지 않는다. DB에만 있고 코치에게 개별 DM으로 전달.
 

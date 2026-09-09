@@ -6,7 +6,6 @@
 <title>FC풉살 하반기 내부매치 드래프트</title>
 <meta name="description" content="FC풉살 2026 하반기 내부매치 드래프트 — 선호팀 투표부터 팀 발표, 우승 예측까지">
 <link rel="stylesheet" href="assets/style.css">
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
@@ -50,6 +49,7 @@ const { charSvg } = window.FDChar;
 
 const CHANNELS = [
   { id: 'vote',    name: '투표',      min: 1, desc: '가고 싶은 팀에 투표하면 드래프트 순서가 정해져요' },
+  { id: 'avatar',  name: '내캐릭터',  min: 1, desc: '나를 닮은 선수를 직접 꾸며보세요 — 코치 화면에도 그대로 나옵니다' },
   { id: 'reveal',  name: '결과발표',  min: 2, desc: '투표 결과로 정해진 드래프트 지명 순서' },
   { id: 'draft',   name: '드래프트',  min: 3, desc: '코치들이 팀을 고르는 중 — 진행 상황만 공개돼요' },
   { id: 'team',    name: '우리팀',    min: 4, desc: '확정된 3팀 명단 (가나다순)' },
@@ -59,7 +59,7 @@ const CHANNELS = [
 ];
 
 let S = {
-  cfg: null, teams: [], players: [], marks: [], pledges: {},
+  cfg: null, teams: [], players: [], marks: [], pledges: {}, looks: {},
   rosters: [], tally: null, comments: [], predictions: [], predictMarks: [],
   matches: [], standings: [],
   active: null, cheerTeam: 'A', celebrated: false,
@@ -71,10 +71,12 @@ const myName = () => store.get('name');
 
 async function load() {
   S.cfg = await api.config();
-  const [teams, players, marks, pledges] = await Promise.all([
-    api.teams(), api.players(), api.voteMarks(), api.pledges(),
+  const [teams, players, marks, pledges, looks] = await Promise.all([
+    api.teams(), api.players(), api.voteMarks(), api.pledges(), api.looks().catch(() => ({})),
   ]);
-  Object.assign(S, { teams, players, marks, pledges });
+  Object.assign(S, { teams, players, marks, pledges, looks });
+  // 등록해두면 이후 charSvg 호출이 전부 저장된 룩을 쓴다
+  window.FDChar.setLooks(looks);
 
   const pi = phaseIdx(S.cfg.phase);
   if (pi >= 2) { try { S.tally = await api.voteTally(); } catch { S.tally = null; } }
@@ -129,8 +131,8 @@ function render() {
       <p class="hint mt">드래프트 준비 중이에요. 카톡 공지를 기다려주세요 🙏</p></div>`;
     return;
   }
-  ({ vote: renderVote, reveal: renderReveal, draft: renderDraft, team: renderTeam,
-     predict: renderPredict, cheer: renderCheer, match: renderMatch }[ch.id])(pane);
+  ({ vote: renderVote, avatar: renderAvatar, reveal: renderReveal, draft: renderDraft,
+     team: renderTeam, predict: renderPredict, cheer: renderCheer, match: renderMatch }[ch.id])(pane);
 }
 
 function go(id) { S.active = id; render(); }
@@ -374,6 +376,132 @@ async function savePledge() {
     document.getElementById('pledgeOk').classList.remove('hidden');
     S.pledges[myName()] = el.value.trim();
   } catch (e) { alert(e.message); }
+}
+
+// ── #내캐릭터 ──────────────────────────────────────────
+// 13가지를 직접 고른다. 저장 전까지는 미리보기만 바뀌고, 저장을 누르면
+// draft_looks 에 올라가 코치 보드·명단·응원 어디서든 이 모습으로 나온다.
+const LOOK_GROUPS = [
+  { title: '몸', rows: [
+    { k: 'h',  name: '키' },
+    { k: 'sk', name: '피부색' },
+    { k: 'fa', name: '표정' },
+  ] },
+  { title: '머리', rows: [
+    { k: 'hl', name: '길이' },
+    { k: 'hs', name: '스타일' },
+    { k: 'hc', name: '색상' },
+  ] },
+  { title: '상의', rows: [
+    { k: 'ts', name: '스타일' },
+    { k: 'tc', name: '색상' },
+  ] },
+  { title: '하의', rows: [
+    { k: 'bs', name: '스타일' },
+    { k: 'bc', name: '색상' },
+  ] },
+  { title: '양말 · 신발', rows: [
+    { k: 'ss', name: '양말 스타일' },
+    { k: 'sc', name: '양말 색상' },
+    { k: 'bo', name: '신발 색상' },
+  ] },
+];
+
+let editLook = null;      // 편집 중인 룩 (저장 전)
+let editName = null;      // 누구 캐릭터를 고치는 중인지
+
+function renderAvatar(pane) {
+  const F = window.FDChar;
+  const name = editName || myName();
+
+  if (!name) {
+    pane.innerHTML = `<div class="card">
+      <h3>먼저 내 이름을 알려주세요</h3>
+      <p class="hint" style="margin:4px 0 14px">이름을 고르면 그 이름의 캐릭터를 꾸밀 수 있어요.</p>
+      <div class="grid-players">
+        ${S.players.map((p) => `<div class="pcard" onclick="pickAvatarName('${esc(p)}')">
+          <span class="chr-wrap">${charSvg(p, { size: 44 })}</span>${esc(p)}</div>`).join('')}
+      </div>
+    </div>`;
+    return;
+  }
+
+  if (!editLook) editLook = F.getLook(name);
+  const saved = S.looks[name];
+
+  pane.innerHTML = `
+    <div class="card center">
+      <div class="chr-stage">${charSvg(name, { size: 124, look: editLook, crop: false })}</div>
+      <h3 style="margin-top:6px">${esc(name)}</h3>
+      <p class="hint">${saved ? '저장된 캐릭터를 고치는 중이에요' : '아직 저장 전이에요 — 기본 모습에서 시작합니다'}</p>
+      <div class="row mt" style="justify-content:center;gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="btnLook" onclick="saveLook()">저장하기</button>
+        <button class="btn small ghost" onclick="randomizeLook()">🎲 랜덤</button>
+        <button class="btn small ghost" onclick="resetLook()">되돌리기</button>
+      </div>
+      <div class="err mt hidden" id="lookErr"></div>
+      <div class="ok mt hidden" id="lookOk">저장했어요 ✓ 코치 화면에도 이 모습으로 보여요</div>
+    </div>
+
+    ${LOOK_GROUPS.map((g) => `<div class="card">
+      <h3>${esc(g.title)}</h3>
+      ${g.rows.map((r) => lookRowHtml(r.k, r.name)).join('')}
+    </div>`).join('')}
+
+    <div class="card">
+      <p class="hint">다른 사람 캐릭터를 꾸미고 싶다면
+        <button class="btn small ghost" onclick="pickAvatarName(null)">이름 다시 고르기</button></p>
+    </div>`;
+}
+
+function lookRowHtml(key, label) {
+  const F = window.FDChar;
+  const n = F.SIZE[key];
+  const cur = editLook[key];
+  const palette = F.PALETTE[key];
+  const labels = F.LABEL[key];
+
+  const opts = Array.from({ length: n }, (_, i) => {
+    const sel = i === cur ? ' sel' : '';
+    return palette
+      ? `<button class="sw${sel}" style="background:${palette[i]}"
+           onclick="setLook('${key}',${i})" aria-label="${label} ${i + 1}"></button>`
+      : `<button class="opt${sel}" onclick="setLook('${key}',${i})">${esc(labels ? labels[i] : String(i + 1))}</button>`;
+  }).join('');
+
+  return `<div class="look-row">
+    <div class="look-label">${esc(label)}</div>
+    <div class="look-opts">${opts}</div>
+  </div>`;
+}
+
+function pickAvatarName(n) { editName = n; editLook = null; render(); }
+function setLook(k, v) { editLook[k] = v; render(); }
+function randomizeLook() { editLook = window.FDChar.randomLook(); render(); }
+function resetLook() {
+  const name = editName || myName();
+  editLook = S.looks[name] ? window.FDChar.normalize(S.looks[name], window.FDChar.fromHash(name))
+                           : window.FDChar.fromHash(name);
+  render();
+}
+
+async function saveLook() {
+  const name = editName || myName();
+  const btn = document.getElementById('btnLook');
+  const err = document.getElementById('lookErr');
+  btn.disabled = true; btn.textContent = '저장 중…'; err.classList.add('hidden');
+  try {
+    await api.submitLook(name, editLook);
+    S.looks[name] = { ...editLook };
+    window.FDChar.setLooks(S.looks);
+    store.set('name', name);
+    confetti({ count: 70, duration: 1800 });
+    render();
+    document.getElementById('lookOk')?.classList.remove('hidden');
+  } catch (e) {
+    err.textContent = e.message; err.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = '저장하기';
+  }
 }
 
 // ── #결과발표 ──────────────────────────────────────────
