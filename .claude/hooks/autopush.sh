@@ -18,6 +18,10 @@ fi
 
 [ -z "$(git status --porcelain)" ] && exit 0
 
+# asset 링크에 내용 해시를 다시 박는다 — 카톡 인앱 브라우저가 옛 CSS 를
+# 물고 있어 레이아웃이 깨져 보인 적이 있다. 커밋 전에 해야 같이 올라간다.
+[ -x tools/stamp-assets.sh ] && ./tools/stamp-assets.sh >/dev/null 2>&1
+
 git add -A || exit 0
 git -c user.name="${GIT_AUTHOR_NAME:-Claude}" \
     -c user.email="${GIT_AUTHOR_EMAIL:-noreply@anthropic.com}" \
