@@ -51,9 +51,15 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
   외부 `<script src>` · `<link href>` 를 새로 추가하지 말 것.
 - **컬러**: 오버진 퍼플 계열 셸 + 팀 3색 (A `#36C5F0` / B `#E01E5A` / C `#2EB67D`).
 - **형태**: 라운드 크게(카드 22px, 버튼 pill), 눌리는 입체 버튼.
-- **캐릭터**: 플랫 지오메트릭 축구 선수. 14가지를 선수가 직접 고른다 —
-  자세 · 키 · 머리(길이/스타일/색) · 피부색 · 표정 · 상의(무늬/색) · 하의(무늬/색) ·
-  양말(무늬/색) · 신발색. 전부 팔레트 인덱스라 jsonb 한 줄로 저장된다.
+- **캐릭터**: 플랫 지오메트릭 축구 선수. **19가지**를 직접 고른다 —
+  자세 · 키 · 머리(길이/스타일/색) · 피부색 · 표정 · 상의(무늬/색) · **등번호** ·
+  하의(무늬/색) · 양말(무늬/색) · 신발색 · **액세서리(+소품색)** · **테두리** · **배경색**.
+  전부 팔레트 인덱스라 jsonb 한 줄로 저장된다 (조합 약 1.1×10¹⁸).
+  ⚠️ `SIZE` 를 바꾸면 **DB 쪽 `v_max` 도 같이** 바꿔야 한다 —
+  `submit_look`(선수)·`coach_set_card`(코치) 두 함수에 있고, 서버가 값을 자르는 유일한 기준이다.
+  키는 0~4 가 viewBox 안에 들어오고(발은 나란히, 머리 높이만 달라짐) 마지막 칸만
+  프레임을 뚫는다. 인접 단계가 10% 넘게 벌어져야 작은 명단에서도 차이가 보인다.
+  팔은 몸통 **앞에** 그린다 — 팔짱·박수처럼 가슴 앞으로 접는 자세에서 가려지기 때문.
   자세는 팔다리를 어깨·팔꿈치·엉덩이·무릎 네 관절에서 회전시켜 만든다 (`POSE` 표).
   리프팅·슈팅은 공을, 하트는 하트를 소품으로 함께 그린다. 새 자세를 추가하려면
   각도 4+4개와 소품 좌표만 적으면 된다.
@@ -85,9 +91,13 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
 
 `draft_` 접두사 테이블. 프로젝트 `qjvuxwldlviknhiydoxw`.
 
-- `draft_pledges` · `draft_looks` 는 **이름 공개가 의도**라 SELECT 정책만 열려 있다.
-  쓰기는 `submit_pledge` / `submit_look` 을 통해서만 가능하고, `submit_look` 은
-  팔레트 범위 밖의 값·모르는 키·숫자가 아닌 값을 서버에서 전부 버린다.
+- `draft_pledges` · `draft_looks` · `draft_coach_cards` 는 **이름 공개가 의도**라
+  SELECT 정책만 열려 있다. 쓰기는 `submit_pledge` / `submit_look` / `coach_set_card` 를
+  통해서만 가능하고, 팔레트 범위 밖의 값·모르는 키·숫자가 아닌 값은 서버에서 전부 버린다.
+- **코치도 표를 받는다.** `draft_coach_cards`(coach_id·이름·팀·룩·각오)를 선수 투표 화면의
+  팀 선택 아래에 노출한다. 암호가 든 `draft_coaches` 는 정책 없음(anon 차단)을 유지하고,
+  카드 테이블에는 암호를 넣지 않는다. `coach_set_card` 는 **암호에서 코치 신원을 끌어내므로**
+  남의 카드는 건드릴 수 없다 (코치 이름을 인자로 받지 않는다).
 - `draft_picks` · `draft_wishes` · `draft_coaches` · `draft_ballots` 는
   **RLS 정책이 아예 없다** = anon 접근 전면 차단. 이게 요구사항 4·5의 방어선이므로
   편의를 위해 정책을 추가하지 말 것.
@@ -95,6 +105,7 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
   `coach_state / coach_pick / coach_undo / coach_wish`,
   `master_set_phase / master_set_reveal_step / master_lock_order / master_publish /
    master_set_score / master_hide_comment / master_reset`,
+  `coach_set_card`,
   `submit_vote / submit_pledge / submit_look / submit_prediction / submit_comment /
    vote_tally / standings`
 - 픽 확정은 `draft_config` 행을 잠그는 원자적 트랜잭션 (동시 픽 유실 방지).

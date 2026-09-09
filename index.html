@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 하반기 내부매치 드래프트</title>
 <meta name="description" content="FC풉살 2026 하반기 내부매치 드래프트 — 선호팀 투표부터 팀 발표, 우승 예측까지">
-<link rel="stylesheet" href="assets/style.css?v=f051ecff">
+<link rel="stylesheet" href="assets/style.css?v=f01e9c2d">
 </head>
 <body>
 
@@ -39,11 +39,12 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=f051ecff"></script>
-<script src="assets/character.js?v=f051ecff"></script>
-<script src="assets/app.js?v=f051ecff"></script>
+<script src="assets/config.js?v=f01e9c2d"></script>
+<script src="assets/character.js?v=f01e9c2d"></script>
+<script src="assets/app.js?v=f01e9c2d"></script>
 <script>
-const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti } = window.FDApp;
+const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
+        LOOK_GROUPS, lookRowHtml } = window.FDApp;
 const C = window.FD;
 const { charSvg } = window.FDChar;
 
@@ -59,7 +60,7 @@ const CHANNELS = [
 ];
 
 let S = {
-  cfg: null, teams: [], players: [], marks: [], pledges: {}, looks: {},
+  cfg: null, teams: [], players: [], marks: [], pledges: {}, looks: {}, coachCards: [],
   rosters: [], tally: null, comments: [], predictions: [], predictMarks: [],
   matches: [], standings: [],
   active: null, cheerTeam: 'A', celebrated: false,
@@ -71,12 +72,14 @@ const myName = () => store.get('name');
 
 async function load() {
   S.cfg = await api.config();
-  const [teams, players, marks, pledges, looks] = await Promise.all([
-    api.teams(), api.players(), api.voteMarks(), api.pledges(), api.looks().catch(() => ({})),
+  const [teams, players, marks, pledges, looks, coachCards] = await Promise.all([
+    api.teams(), api.players(), api.voteMarks(), api.pledges(),
+    api.looks().catch(() => ({})), api.coachCards().catch(() => []),
   ]);
-  Object.assign(S, { teams, players, marks, pledges, looks });
-  // 등록해두면 이후 charSvg 호출이 전부 저장된 룩을 쓴다
-  window.FDChar.setLooks(looks);
+  Object.assign(S, { teams, players, marks, pledges, looks, coachCards });
+  // 등록해두면 이후 charSvg 호출이 전부 저장된 룩을 쓴다.
+  // 코치 이름은 선수 이름과 겹치지 않아 한 맵에 같이 담아도 안전하다.
+  window.FDChar.setLooks({ ...looks, ...api.looksFromCards(coachCards) });
 
   const pi = phaseIdx(S.cfg.phase);
   if (pi >= 2) { try { S.tally = await api.voteTally(); } catch { S.tally = null; } }
@@ -269,13 +272,31 @@ function renderVote(pane) {
 function teamOptsHtml(slot) {
   return S.teams.map((t) => {
     const sel = voteForm[slot] === t.code;
-    return `<button class="team-opt ${sel ? 'sel' : ''}" style="${sel ? `color:${t.color}` : ''}"
+    return `<div class="team-block ${sel ? 'sel' : ''}" style="--tc:${t.color}">
+      <button class="team-opt ${sel ? 'sel' : ''}" style="${sel ? `color:${t.color}` : ''}"
               onclick="pickTeam('${slot}','${t.code}')">
-              <span class="team-swatch" style="background:${t.color}"></span>
-              <span><span class="tname">${esc(t.name)}</span><br><span class="tcoach">${esc(t.coaches)} 코치</span></span>
-              ${sel ? '<span class="pick-no">선택됨</span>' : ''}
-            </button>`;
+        <span class="team-swatch" style="background:${t.color}"></span>
+        <span><span class="tname">${esc(t.name)}</span><br><span class="tcoach">${esc(t.coaches)} 코치</span></span>
+        ${sel ? '<span class="pick-no">선택됨</span>' : ''}
+      </button>
+      ${slot === 'first' ? coachPitchHtml(t.code) : ''}
+    </div>`;
   }).join('');
+}
+
+// 코치들의 어필 — 코치도 표를 받는 입장이라 캐릭터와 각오를 같이 보여준다
+function coachPitchHtml(teamCode) {
+  const cards = S.coachCards.filter((c) => c.team === teamCode);
+  if (!cards.length) return '';
+  return `<div class="pitch">
+    ${cards.map((c) => `<div class="pitch-c">
+      ${charSvg(c.coach_name, { size: 38 })}
+      <div class="pitch-b">
+        <b>${esc(c.coach_name)} 코치</b>
+        <span>${esc(c.pledge || '한마디 준비 중이에요')}</span>
+      </div>
+    </div>`).join('')}
+  </div>`;
 }
 
 function progressHtml() {
@@ -462,35 +483,6 @@ async function savePledge() {
 // ── #내캐릭터 ──────────────────────────────────────────
 // 13가지를 직접 고른다. 저장 전까지는 미리보기만 바뀌고, 저장을 누르면
 // draft_looks 에 올라가 코치 보드·명단·응원 어디서든 이 모습으로 나온다.
-const LOOK_GROUPS = [
-  { title: '자세', rows: [
-    { k: 'po', name: '포즈' },
-  ] },
-  { title: '몸', rows: [
-    { k: 'h',  name: '키' },
-    { k: 'sk', name: '피부색' },
-    { k: 'fa', name: '표정' },
-  ] },
-  { title: '머리', rows: [
-    { k: 'hl', name: '길이' },
-    { k: 'hs', name: '스타일' },
-    { k: 'hc', name: '색상' },
-  ] },
-  { title: '상의', rows: [
-    { k: 'ts', name: '스타일' },
-    { k: 'tc', name: '색상' },
-  ] },
-  { title: '하의', rows: [
-    { k: 'bs', name: '스타일' },
-    { k: 'bc', name: '색상' },
-  ] },
-  { title: '양말 · 신발', rows: [
-    { k: 'ss', name: '양말 스타일' },
-    { k: 'sc', name: '양말 색상' },
-    { k: 'bo', name: '신발 색상' },
-  ] },
-];
-
 let editLook = null;      // 편집 중인 룩 (저장 전)
 let editName = null;      // 누구 캐릭터를 고치는 중인지
 
@@ -536,29 +528,6 @@ function renderAvatar(pane) {
       <p class="hint">다른 사람 캐릭터를 꾸미고 싶다면
         <button class="btn small ghost" onclick="pickAvatarName(null)">이름 다시 고르기</button></p>
     </div>`;
-}
-
-// 투표 2단계와 #내캐릭터 채널이 같은 컨트롤을 쓴다.
-// look 은 편집 중인 객체, setter 는 클릭 시 부를 전역 함수 이름.
-function lookRowHtml(key, label, look, setter = 'setLook') {
-  const F = window.FDChar;
-  const n = F.SIZE[key];
-  const cur = (look || editLook || {})[key];
-  const palette = F.PALETTE[key];
-  const labels = F.LABEL[key];
-
-  const opts = Array.from({ length: n }, (_, i) => {
-    const sel = i === cur ? ' sel' : '';
-    return palette
-      ? `<button class="sw${sel}" style="background:${palette[i]}"
-           onclick="${setter}('${key}',${i})" aria-label="${label} ${i + 1}"></button>`
-      : `<button class="opt${sel}" onclick="${setter}('${key}',${i})">${esc(labels ? labels[i] : String(i + 1))}</button>`;
-  }).join('');
-
-  return `<div class="look-row">
-    <div class="look-label">${esc(label)}</div>
-    <div class="look-opts">${opts}</div>
-  </div>`;
 }
 
 function pickAvatarName(n) { editName = n; editLook = null; render(); }
