@@ -220,21 +220,33 @@ button, input, textarea { font-family: inherit; }
 .look-opts .opt.sel { background: var(--aubergine-dark); border-color: var(--aubergine-dark); color: #fff; }
 
 /* ── 선수 대기장 ───────────────────────────── */
-/* 도착한 사람은 캐릭터가 튀고 각오를 달고 있다.
-   아직 안 온 사람은 흐린 실루엣 — 빈자리로 "몇 명 남았다"를 말한다. */
-.lounge { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; align-items: start; }
-.lp {
-  text-align: center; padding: 9px 5px 11px;
-  border: 2px solid var(--border); border-radius: var(--radius); background: #fff;
+/* 18명이 한 화면에 들어오도록 캐릭터를 작게, 촘촘하게.
+   각오는 카드마다 달지 않고 위쪽 말풍선 한 칸이 돌아가며 말한다. */
+.speech {
+  display: flex; align-items: center; gap: 8px; min-height: 46px;
+  margin: 10px 0 12px; padding: 9px 13px;
+  background: #f6f2f9; border-radius: 16px 16px 16px 4px;
+  font-size: 13px; line-height: 1.4; word-break: break-word;
 }
-.lp.away { opacity: .38; background: #f7f5f8; filter: grayscale(.65); }
-.lp .nm { font-weight: 700; font-size: 14.5px; margin-top: 2px; }
-.lp .tag { font-size: 10.5px; font-weight: 700; color: var(--faint); margin-top: 3px; }
-.lp .bub {
-  margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--muted);
-  background: #f6f2f9; border-radius: 12px 12px 12px 3px;
-  padding: 6px 8px; line-height: 1.35; word-break: break-word;
+.speech .who { flex: none; font-weight: 800; color: var(--aubergine); }
+.speech .say { font-weight: 600; color: var(--ink); }
+
+.crowd {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px 2px;
+  padding: 10px 4px 6px; border-radius: var(--radius-sm);
+  background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(91, 43, 94, .07), transparent 70%);
 }
+.cp {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 4px 0 3px; border: 0; background: transparent; cursor: pointer;
+  border-radius: 12px; transition: background .15s;
+}
+.cp:active { background: rgba(91, 43, 94, .08); }
+.cp .nm { font-size: 10px; font-weight: 700; color: var(--muted); line-height: 1.1; }
+.cp.away { opacity: .32; filter: grayscale(.7); }
+.cp.talking { background: rgba(0, 163, 122, .12); }
+.cp.talking .nm { color: var(--green); }
+@media (max-width: 360px) { .crowd { grid-template-columns: repeat(5, 1fr); } }
 
 /* 투표 2단계 안에서 컨트롤 묶음을 나누는 작은 제목 */
 .look-group {
