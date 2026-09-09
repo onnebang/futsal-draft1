@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 하반기 내부매치 드래프트</title>
 <meta name="description" content="FC풉살 2026 하반기 내부매치 드래프트 — 선호팀 투표부터 팀 발표, 우승 예측까지">
-<link rel="stylesheet" href="assets/style.css?v=7cbfe578">
+<link rel="stylesheet" href="assets/style.css?v=96a33e7d">
 </head>
 <body>
 
@@ -24,6 +24,7 @@
   <main class="main">
     <!-- 상단 바 (모바일) -->
     <div class="topbar">
+      <div id="kakaoExit"></div>
       <div class="ws-name">⚽ FC풉살 <span style="font-weight:400;opacity:.7;font-size:13px" id="tbPhase"></span></div>
       <div class="topbar-channels" id="channelsMobile"></div>
     </div>
@@ -39,12 +40,12 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=7cbfe578"></script>
-<script src="assets/character.js?v=7cbfe578"></script>
-<script src="assets/app.js?v=7cbfe578"></script>
+<script src="assets/config.js?v=96a33e7d"></script>
+<script src="assets/character.js?v=96a33e7d"></script>
+<script src="assets/app.js?v=96a33e7d"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
-        LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop } = window.FDApp;
+        LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop, isTyping, kakaoExitBannerHtml } = window.FDApp;
 const C = window.FD;
 const { charSvg } = window.FDChar;
 
@@ -999,12 +1000,17 @@ async function submitComment() {
 }
 
 // ── 시작 & 주기적 갱신 ─────────────────────────────────
+document.getElementById('kakaoExit').innerHTML = kakaoExitBannerHtml();
+
 load().catch((e) => {
   document.getElementById('pane').innerHTML =
     `<div class="card"><h3>연결에 실패했어요</h3><p class="hint mt">잠시 후 새로고침해주세요.</p>
      <p class="hint" style="font-size:11px;opacity:.6">${esc(e.message)}</p></div>`;
 });
-setInterval(() => { load().catch(() => {}); }, 10000);
+setInterval(() => {
+  if (isTyping()) return; // 각오 등 입력 중엔 재렌더를 건너뛴다 — 자판이 닫히는 문제 방지
+  load().catch(() => {});
+}, 10000);
 </script>
 </body>
 </html>

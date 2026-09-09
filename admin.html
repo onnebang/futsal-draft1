@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FC풉살 드래프트 관리자</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="assets/style.css?v=7cbfe578">
+<link rel="stylesheet" href="assets/style.css?v=96a33e7d">
 </head>
 <body>
 
 <div class="gate" id="gate">
+  <div id="kakaoExitGate"></div>
   <div class="gate-card">
     <h1>🛠 드래프트 관리자</h1>
     <p class="hint">마스터 암호를 입력해주세요.</p>
@@ -35,6 +36,7 @@
 
   <main class="main">
     <div class="topbar">
+      <div id="kakaoExit"></div>
       <div class="ws-name">⚽ FC풉살 · 마스터</div>
       <div class="topbar-channels">
         <button class="ch" onclick="location.href='index.html'">선수 화면</button>
@@ -49,12 +51,14 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=7cbfe578"></script>
-<script src="assets/app.js?v=7cbfe578"></script>
+<script src="assets/config.js?v=96a33e7d"></script>
+<script src="assets/app.js?v=96a33e7d"></script>
 <script>
-const { api, store, esc } = window.FDApp;
+const { api, store, esc, isTyping, kakaoExitBannerHtml } = window.FDApp;
 const C = window.FD;
 let PASS = null, ST = null, TEAMS = [], TALLY = null, MATCHES = [];
+
+document.getElementById('kakaoExitGate').innerHTML = kakaoExitBannerHtml();
 
 const STEPS = [
   { phase: 'VOTE',    title: '① 투표 오픈',      desc: '선수들이 선호팀에 투표합니다.' },
@@ -76,8 +80,12 @@ async function login() {
     TEAMS = await api.teams();
     document.getElementById('gate').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
+    document.getElementById('kakaoExit').innerHTML = kakaoExitBannerHtml();
     await refresh();
-    setInterval(refresh, 8000);
+    setInterval(() => {
+      if (isTyping()) return; // 점수 입력 등 입력 중엔 재렌더를 건너뛴다 — 자판이 닫히는 문제 방지
+      refresh();
+    }, 8000);
   } catch (e) { err.textContent = e.message; err.classList.remove('hidden'); }
   finally { btn.disabled = false; }
 }

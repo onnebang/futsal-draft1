@@ -500,6 +500,33 @@
     return d === '' ? 0 : Math.min(999, parseInt(d, 10));
   }
 
+  // 폴링 타이머가 입력 중인 DOM 노드를 통째로 갈아치우지 않게 막는다.
+  // 안 그러면 각오 한마디를 쓰는 중에 5~10초마다 재렌더가 돌면서 입력칸이
+  // 새 노드로 바뀌어 포커스가 날아가고, 모바일에서는 그 순간 가상 키보드가 닫힌다.
+  function isTyping() {
+    const el = document.activeElement;
+    return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+  }
+
+  // 카카오톡 인앱 브라우저 감지 — 인앱 브라우저는 렌더링·키보드 상호작용이
+  // 특히 불안정하다. 페이지 로드 시점에 스크립트로 바로 kakaotalk:// 스킴을
+  // 태워서 자동으로 내보내려 해봤지만, 실기기와 동일한 크로미움 엔진에서
+  // "사용자 제스처 없이는 커스텀 스킴을 열 수 없다"는 브라우저 보안 정책에
+  // 걸려 조용히 막히거나(대부분) 페이지 로드 자체가 멈추는 경우까지 있었다
+  // (Playwright 로 재현·확인함). 그래서 진짜 자동 이동은 기술적으로 불가능하고,
+  // 버튼 탭으로 "사용자 제스처"를 만들어줘야만 스킴이 열린다.
+  const IN_KAKAO = /KAKAOTALK/i.test(navigator.userAgent || '');
+  function openExternalBrowser() {
+    location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+  }
+  function kakaoExitBannerHtml() {
+    if (!IN_KAKAO) return '';
+    return `<div class="kakao-exit">
+      <span>💬 카카오톡 브라우저예요 — 느리거나 자판이 자꾸 닫히면</span>
+      <button class="btn tiny" onclick="window.FDApp.openExternalBrowser()">브라우저로 열기</button>
+    </div>`;
+  }
+
   // 커스터마이저 미리보기를 화면 위에 고정한다.
   // 컨트롤이 19줄이라 스크롤하면 캐릭터가 시야에서 사라져, 뭘 바꿨는지 볼 수가 없다.
   // 모바일은 topbar 가 sticky 라 그 높이만큼 내려서 붙여야 겹치지 않는다.
@@ -615,5 +642,6 @@
   }
 
   window.FDApp = { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
-                   LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop, DEMO };
+                   LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop,
+                   isTyping, IN_KAKAO, openExternalBrowser, kakaoExitBannerHtml, DEMO };
 })();
