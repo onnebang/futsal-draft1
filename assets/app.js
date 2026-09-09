@@ -347,6 +347,34 @@
     return Array.from({ length: C.TOTAL_PICKS }, (_, i) => snakeTeam(order, i));
   }
 
+  // 스네이크 트랙 — 6라운드 × 3픽을 팀 색 칸으로 그린다. 선수·코치 화면이 같이 쓴다.
+  // 짝수 라운드는 오른쪽에서 왼쪽으로 흘러 "뱀" 모양이 눈에 보이게 한다.
+  // 선수에게도 보여주는 화면이라 칸에는 팀만 적고, 누가 뽑혔는지는 절대 넣지 않는다.
+  function snakeTrackHtml(order, cur, teams) {
+    if (!order) return '';
+    const teamOf = (c) => teams.find((t) => t.code === c) || { name: c, color: '#888' };
+    const seq = snakeSeq(order);
+    const rounds = [];
+    for (let r = 0; r < C.TOTAL_PICKS / 3; r++) {
+      const cells = [0, 1, 2].map((k) => {
+        const i = r * 3 + k;
+        const t = teamOf(seq[i]);
+        const state = i < cur ? 'done' : i === cur ? 'now' : 'todo';
+        return `<span class="st-cell ${state}" style="--tc:${t.color};--tc-bg:${t.color}24;--tc-bd:${t.color}66;--tc-glow:${t.color}73">
+          <span class="st-name">${esc(t.name)}</span>
+          ${state === 'done' ? '<span class="st-mark">✓</span>' : state === 'now' ? '<span class="st-mark st-now">지금</span>' : ''}
+        </span>`;
+      });
+      const rev = r % 2 === 1;
+      const roundDone = cur >= (r + 1) * 3;
+      rounds.push(`<div class="st-round ${rev ? 'rev' : ''} ${roundDone ? 'done' : ''}">
+        <span class="st-label">${r + 1}R</span>
+        ${cells.join('<span class="st-arrow"></span>')}
+      </div>`);
+    }
+    return `<div class="snake-track">${rounds.join('')}</div>`;
+  }
+
   // 이름 → 고정 색상 (아바타용)
   const AVATAR_COLORS = ['#36C5F0', '#2EB67D', '#ECB22E', '#E01E5A', '#4A154B', '#1264A3', '#DE7C29'];
   function colorFor(name) {
@@ -448,5 +476,5 @@
     })(start);
   }
 
-  window.FDApp = { api, store, snakeTeam, snakeSeq, colorFor, esc, timeAgo, shuffled, confetti, DEMO };
+  window.FDApp = { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti, DEMO };
 })();

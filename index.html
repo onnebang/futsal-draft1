@@ -43,7 +43,7 @@
 <script src="assets/character.js"></script>
 <script src="assets/app.js"></script>
 <script>
-const { api, store, snakeTeam, snakeSeq, colorFor, esc, timeAgo, shuffled, confetti } = window.FDApp;
+const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti } = window.FDApp;
 const C = window.FD;
 const { charSvg } = window.FDChar;
 
@@ -287,13 +287,58 @@ function progressHtml() {
   </div>`;
 }
 
-// 대기장 — 투표를 마친 사람은 캐릭터와 각오 한마디를 달고 서 있고,
-// 아직 안 온 사람은 흐린 실루엣으로 자리만 잡고 있다.
-// "몇 명 남았다"를 숫자로 말하는 대신 빈자리로 보여준다.
+// 대기장 — 18명이 한 화면에 오밀조밀 모여 선다.
+// 도착한 사람은 색이 있고 튀며, 아직 안 온 사람은 흐린 실루엣.
+// 각오는 카드마다 달지 않고(세로로 너무 길어진다) 위쪽 말풍선 한 칸에서
+// 한 명씩 돌아가며 말한다. 누르면 그 사람이 바로 말한다.
+let speaker = null;     // 지금 말풍선에 나오는 사람
+let speakHold = 0;      // 탭으로 고른 뒤 자동 순환을 잠시 멈추는 시각
+let speakTimer = null;
+
+function talkers() { return S.players.filter((p) => S.marks.includes(p) && S.pledges[p]); }
+
+function startSpeakLoop() {
+  if (speakTimer) return;
+  speakTimer = setInterval(() => {
+    if (Date.now() < speakHold) return;
+    const t = talkers();
+    if (!t.length) return;
+    speaker = t[(t.indexOf(speaker) + 1) % t.length];
+    paintSpeech();
+  }, 3200);
+}
+
+function speak(name) {
+  speaker = name;
+  speakHold = Date.now() + 8000;
+  paintSpeech();
+}
+
+function speechHtml() {
+  const n = speaker;
+  if (!n) {
+    const t = talkers();
+    return `<span class="hint">${t.length ? '…' : '아직 각오를 남긴 사람이 없어요. 첫 번째가 되어보세요!'}</span>`;
+  }
+  const arrived = S.marks.includes(n);
+  const body = !arrived ? '아직 안 왔어요. 카톡으로 살짝 알려주세요 🙌'
+             : (S.pledges[n] || '도착! 각오는 아직이에요');
+  return `<span class="who">${esc(n)}</span><span class="say">${esc(body)}</span>`;
+}
+
+// 전체 렌더 없이 말풍선과 강조만 갈아끼운다 — 10초마다 오는 재렌더와 무관하게 부드럽다
+function paintSpeech() {
+  const el = document.getElementById('speech');
+  if (!el) return;
+  el.innerHTML = speechHtml();
+  document.querySelectorAll('.crowd .cp').forEach((b) => b.classList.toggle('talking', b.dataset.name === speaker));
+}
+
 function loungeHtml(title) {
   const here = S.players.filter((p) => S.marks.includes(p));
   const left = S.players.filter((p) => !S.marks.includes(p));
-  const all = shuffled(here).concat(left); // 온 사람은 매번 순서를 섞어 특정인이 고정되지 않게
+  if (!speaker || !S.players.includes(speaker)) speaker = talkers()[0] || null;
+  startSpeakLoop();
 
   return `<div class="card">
     <div class="row">
@@ -301,22 +346,20 @@ function loungeHtml(title) {
       <span class="spacer"></span>
       <span class="chip ${left.length ? 'live' : ''}">${here.length} / ${S.players.length}명</span>
     </div>
-    <p class="hint" style="margin:6px 0 14px">${left.length === 0
-      ? '전원 도착! 이제 마감과 발표만 남았어요 🎉'
-      : `<b>${left.length}명</b>이 아직이에요. 흐린 자리가 채워지면 끝납니다.`}</p>
-    <div class="lounge">
-      ${all.map((n) => {
+    <div class="speech" id="speech">${speechHtml()}</div>
+    <div class="crowd">
+      ${S.players.map((n) => {
         const arrived = S.marks.includes(n);
-        const pledge = S.pledges[n];
-        return `<div class="lp ${arrived ? '' : 'away'}">
-          <span class="chr-wrap">${charSvg(n, { size: 54, bounce: arrived })}</span>
-          <div class="nm">${esc(n)}</div>
-          ${arrived
-            ? (pledge ? `<div class="bub">${esc(pledge)}</div>` : '<div class="tag">도착</div>')
-            : '<div class="tag">아직</div>'}
-        </div>`;
+        return `<button class="cp ${arrived ? '' : 'away'} ${n === speaker ? 'talking' : ''}"
+                  data-name="${esc(n)}" onclick="speak('${esc(n)}')">
+          ${charSvg(n, { size: 32, bounce: arrived })}
+          <span class="nm">${esc(n)}</span>
+        </button>`;
       }).join('')}
     </div>
+    <p class="hint" style="margin:10px 0 0">${left.length === 0
+      ? '전원 도착! 이제 마감과 발표만 남았어요 🎉'
+      : `<b>${left.length}명</b>이 아직이에요 · 캐릭터를 누르면 각오가 보여요`}</p>
     ${left.length ? `<div class="mt"><button class="btn small ghost" onclick="copyNudge()">카톡에 붙여넣을 문구 복사</button></div>` : ''}
   </div>`;
 }
@@ -616,6 +659,17 @@ function renderDraft(pane) {
       </p>
       ${done ? `<div class="mt"><button class="btn" onclick="go('team')">확정 명단 보기</button></div>` : ''}
     </div>
+
+    ${order ? `<div class="card">
+      <div class="row">
+        <h3 style="margin:0">뽑는 순서</h3>
+        <span class="spacer"></span>
+        <span class="hint">${done ? '모두 끝' : nowTeam ? `지금 <b style="color:${nowTeam.color}">${esc(nowTeam.name)}</b>` : ''}</span>
+      </div>
+      <p class="hint" style="margin:4px 0 12px">한 라운드에 세 팀이 한 명씩 뽑고, 다음 라운드는 방향이 뒤집혀요.
+        칸에는 팀만 표시되고 <b>누가 뽑혔는지는 나오지 않습니다.</b></p>
+      ${snakeTrackHtml(order, cur, S.teams)}
+    </div>` : ''}
 
     ${loungeHtml('선수 대기장')}`;
 }
