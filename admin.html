@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FC풉살 드래프트 관리자</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="assets/style.css?v=96a33e7d">
+<link rel="stylesheet" href="assets/style.css?v=0919c1f5">
 </head>
 <body>
 
@@ -51,8 +51,8 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=96a33e7d"></script>
-<script src="assets/app.js?v=96a33e7d"></script>
+<script src="assets/config.js?v=0919c1f5"></script>
+<script src="assets/app.js?v=0919c1f5"></script>
 <script>
 const { api, store, esc, isTyping, kakaoExitBannerHtml } = window.FDApp;
 const C = window.FD;
@@ -63,7 +63,7 @@ document.getElementById('kakaoExitGate').innerHTML = kakaoExitBannerHtml();
 const STEPS = [
   { phase: 'VOTE',    title: '① 투표 오픈',      desc: '선수들이 선호팀에 투표합니다.' },
   { phase: 'REVEAL',  title: '② 투표 마감 · 발표', desc: '투표를 닫고 지명 순서를 공개합니다.' },
-  { phase: 'DRAFT',   title: '③ 드래프트 창 오픈', desc: '코치들이 각자 접속해 18픽을 진행합니다.' },
+  { phase: 'DRAFT',   title: '③ 드래프트 창 오픈', desc: `코치들이 각자 접속해 ${C.TOTAL_PICKS}픽을 진행합니다.` },
   { phase: 'RESULT',  title: '④ 결과 공개',       desc: '가나다순 명단을 선수들에게 공개합니다.' },
   { phase: 'PREDICT', title: '⑤ 예측 · 응원 오픈', desc: '우승 예측과 팀 응원 채널을 엽니다.' },
   { phase: 'MATCH',   title: '⑥ 매치데이',        desc: '예측을 잠그고 경기 결과를 입력합니다.' },
@@ -108,7 +108,7 @@ function render() {
       <div class="row">
         <span class="chip live">${esc(C.PHASE_LABEL[ST.phase] || ST.phase)}</span>
         <span class="spacer"></span>
-        <span class="hint">투표 ${ST.vote_count}/18 · 드래프트 ${ST.cursor}/18</span>
+        <span class="hint">투표 ${ST.vote_count}/${ST.players.length} · 드래프트 ${ST.cursor}/${C.TOTAL_PICKS}</span>
       </div>
       <div class="mt">
         ${STEPS.map((s) => {
@@ -170,7 +170,7 @@ function revealCard() {
 
 function publishCard() {
   return `<div class="card">
-    <h3>✅ 18픽 완료 — 결과 공개 준비됨</h3>
+    <h3>✅ ${C.TOTAL_PICKS}픽 완료 — 결과 공개 준비됨</h3>
     <p class="hint mt">코치들이 명단을 확인했다면 아래 버튼을 누르세요.
       지명 순서를 제거하고 <b>가나다순</b>으로 정렬한 명단이 선수들에게 공개됩니다.</p>
     <div class="mt"><button class="btn" onclick="publish()">결과 공개하기</button></div>

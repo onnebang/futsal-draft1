@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 하반기 내부매치 드래프트</title>
 <meta name="description" content="FC풉살 2026 하반기 내부매치 드래프트 — 선호팀 투표부터 팀 발표, 우승 예측까지">
-<link rel="stylesheet" href="assets/style.css?v=96a33e7d">
+<link rel="stylesheet" href="assets/style.css?v=0919c1f5">
 </head>
 <body>
 
@@ -40,9 +40,9 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=96a33e7d"></script>
-<script src="assets/character.js?v=96a33e7d"></script>
-<script src="assets/app.js?v=96a33e7d"></script>
+<script src="assets/config.js?v=0919c1f5"></script>
+<script src="assets/character.js?v=0919c1f5"></script>
+<script src="assets/app.js?v=0919c1f5"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
         LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop, isTyping, kakaoExitBannerHtml } = window.FDApp;
@@ -402,7 +402,7 @@ function loungeHtml(title) {
 function copyNudge() {
   const left = S.players.filter((p) => !S.marks.includes(p));
   const text = left.length === 0
-    ? '18명 전원 투표 완료했어요! 감사합니다 🎉'
+    ? `${S.players.length}명 전원 투표 완료했어요! 감사합니다 🎉`
     : `${left.join(', ')} 님 아직 투표 전이에요 🙌\n1분이면 끝나요. 캐릭터도 꾸미고 각오 한마디도 남겨주세요!\n${location.origin}${location.pathname}`;
   navigator.clipboard?.writeText(text).then(
     () => alert('복사했어요!\n\n' + text),
@@ -634,7 +634,7 @@ function renderReveal(pane) {
       <p class="mt" style="font-size:17px;font-weight:900">
         ${order.map((c, i) => `${i + 1}️⃣ ${esc(teamOf(c).name)}`).join('  →  ')}
       </p>
-      <p class="hint mt">6라운드 스네이크(1-2-3-3-2-1)로 총 18픽이 진행됩니다.</p>
+      <p class="hint mt">라운드마다 방향이 바뀌는 스네이크 방식으로 총 ${C.TOTAL_PICKS}픽이 진행됩니다.</p>
     </div>` : ''}`;
 
   if (step >= 3 && !S.celebrated) { S.celebrated = true; confetti(); }

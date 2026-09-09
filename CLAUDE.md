@@ -1,6 +1,9 @@
 # FC풉살 드래프트 — 작업 가이드
 
-여자 풋살팀 FC풉살(18명)의 하반기 내부매치 팀을 나누는 웹앱.
+여자 풋살팀 FC풉살(총 23명 — 참석 19 · 불참 4)의 하반기 내부매치 팀을 나누는 웹앱.
+불참자도 투표·각오·캐릭터는 똑같이 하고, 드래프트도 같은 스네이크 순번을 끊지 않고
+이어서 뽑는다 — 참석 여부로 지명을 막지 않는다(`draft_players.attending` 은 코치 화면
+라벨용 참고 정보일 뿐).
 **선수 무기명 투표 → 코치 전용 드래프트 → 지명 순번을 지운 결과 공개 → 예측·응원 → 매치데이(12/19)**
 6단계가 `draft_config.phase` 값 하나로 굴러간다.
 
@@ -32,7 +35,7 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
 
 | 파일 | 역할 |
 |---|---|
-| `index.html` | 선수 18명용. 슬랙식 채널(#투표 #내캐릭터 #결과발표 #드래프트 #우리팀 #예측 #응원 #경기)로 단계 전환 |
+| `index.html` | 선수 23명용. 슬랙식 채널(#투표 #내캐릭터 #결과발표 #드래프트 #우리팀 #예측 #응원 #경기)로 단계 전환 |
 | `coach.html` | 코치 6명용 드래프트 보드 (암호 게이트) |
 | `admin.html` | 마스터용 운영 콘솔 (암호 게이트) |
 | `assets/config.js` | Supabase URL/공개키, 팀 컬러, 에러 메시지 |
@@ -150,6 +153,15 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
 - `draft_picks` · `draft_wishes` · `draft_coaches` · `draft_ballots` 는
   **RLS 정책이 아예 없다** = anon 접근 전면 차단. 이게 요구사항 4·5의 방어선이므로
   편의를 위해 정책을 추가하지 말 것.
+- `draft_players.attending` — 불참 4명을 표시하는 컬럼이지만 **지명을 막지 않는다.**
+  투표·각오·캐릭터(`submit_vote`/`submit_pledge`/`submit_look`)는 애초에 이 컬럼을
+  보지 않고, `coach_pick`도 전체 인원(`count(*) from draft_players`, 현재 23)을
+  기준으로 픽 수를 셀 뿐 대상엔 제한을 두지 않는다 — 참석 19명을 다 뽑은 뒤 같은
+  스네이크 순번을 끊지 않고 그대로 불참 4명까지 이어서 뽑는 구조라서다. 유일한
+  쓰임은 `coach_state().absentees` 로 코치 화면 선수 풀에 "🚫 불참" 라벨을 붙여
+  코치가 순서를 헷갈리지 않게 돕는 것뿐이다. `assets/config.js`의
+  `TOTAL_PICKS`(=전체 인원수)도 여기서 나온다 — 팀 수로 안 나눠떨어지면 스네이크
+  마지막 라운드가 부분적으로만 찬다(`snakeTrackHtml`가 넘치는 칸을 스스로 잘라낸다).
 - 모든 쓰기는 `SECURITY DEFINER` 함수 경유. 코치 기능은 8자리 암호로 게이트.
   `coach_state / coach_pick / coach_undo / coach_wish`,
   `master_set_phase / master_set_reveal_step / master_lock_order / master_publish /
@@ -187,4 +199,4 @@ GitHub Pages (`main` 브랜치 root). 푸시하면 1~2분 뒤 반영.
 안 하면 카톡 인앱 브라우저가 옛 CSS 를 물고 있어 **HTML 만 새 버전인 상태**가 되고,
 레이아웃이 통째로 깨져 보인다 (실제로 겪었다).
 드래프트 진행 중에는 `main`에 바로 푸시하지 말고 확인 후 올릴 것 —
-선수 18명이 실시간으로 보고 있는 화면이다.
+선수 23명이 실시간으로 보고 있는 화면이다.
