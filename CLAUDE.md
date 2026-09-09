@@ -4,7 +4,8 @@
 **선수 무기명 투표 → 코치 전용 드래프트 → 지명 순번을 지운 결과 공개 → 예측·응원 → 매치데이(12/19)**
 6단계가 `draft_config.phase` 값 하나로 굴러간다.
 
-상세 설계는 [`PLAN.md`](PLAN.md), 운영 절차는 [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+상세 설계는 [`PLAN.md`](PLAN.md), 운영 절차는 [`docs/OPERATIONS.md`](docs/OPERATIONS.md),
+선수·코치·마스터에게 보낼 카톡 안내문과 링크는 [`docs/NOTICES.md`](docs/NOTICES.md).
 
 ## 실행
 
