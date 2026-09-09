@@ -106,12 +106,12 @@
     ] : [],
     predictMarks: [],
     matches: demoPhase === 'MATCH'
-      ? [{ id: 1, home: 'A', away: 'B', home_score: 3, away_score: 1 },
-         { id: 2, home: 'B', away: 'C', home_score: 2, away_score: 2 },
-         { id: 3, home: 'C', away: 'A', home_score: 0, away_score: 1 }]
-      : [{ id: 1, home: 'A', away: 'B', home_score: null, away_score: null },
-         { id: 2, home: 'B', away: 'C', home_score: null, away_score: null },
-         { id: 3, home: 'C', away: 'A', home_score: null, away_score: null }],
+      ? [{ id: 1, home: 'A', away: 'B', home_score: 3, away_score: 1, match_order: 1 },
+         { id: 2, home: 'B', away: 'C', home_score: 2, away_score: 2, match_order: 2 },
+         { id: 3, home: 'C', away: 'A', home_score: 0, away_score: 1, match_order: 3 }]
+      : [{ id: 1, home: 'A', away: 'B', home_score: null, away_score: null, match_order: 1 },
+         { id: 2, home: 'B', away: 'C', home_score: null, away_score: null, match_order: 2 },
+         { id: 3, home: 'C', away: 'A', home_score: null, away_score: null, match_order: 3 }],
 
     // 코치 보드 리허설용 상태
     coachState() {
@@ -292,8 +292,8 @@
     },
 
     async matches() {
-      if (DEMO) return demo.matches.slice();
-      return rest('draft_matches?select=id,home,away,home_score,away_score&order=id');
+      if (DEMO) return demo.matches.slice().sort((a, b) => (a.match_order ?? a.id) - (b.match_order ?? b.id));
+      return rest('draft_matches?select=id,home,away,home_score,away_score,match_order&order=match_order.nullslast,id');
     },
 
     async standings() {
@@ -308,6 +308,16 @@
         return Promise.resolve({ ok: true });
       }
       return rpc('master_set_score', { p_passcode: pass, p_match: matchId, p_home: home, p_away: away });
+    },
+
+    // 투표 1위 팀 특전 ② — 매치데이 경기 순서를 그 팀 코치가 정한다.
+    // p_order: 원하는 진행 순서대로 나열한 match id 배열.
+    coachSetMatchOrder(pass, order) {
+      if (DEMO) {
+        order.forEach((id, i) => { const m = demo.matches.find((x) => x.id === id); if (m) m.match_order = i + 1; });
+        return Promise.resolve({ ok: true });
+      }
+      return rpc('coach_set_match_order', { p_passcode: pass, p_order: order });
     },
 
     // ── 코치용 (암호 게이트) ────────────────────────────

@@ -88,6 +88,24 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
 - **모션**: `.chr-bounce` — 두 박자 둠칫둠칫. 착지에서 눌리고 뜰 때 늘어나는
   스쿼시&스트레치로 리듬을 만든다. `prefers-reduced-motion` 에서는 꺼진다.
 
+## 투표 1위 팀 특전 (비전력 보상)
+
+코치들도 팀 선택 어필로 표를 받는 입장이라, 실력과 무관한 보상 두 가지를 준다.
+스네이크 드래프트 자체는 건드리지 않았다 — 현행 방식이 이미 투표 1위 팀에게
+1라운드 1픽을 준다.
+
+1. **1라운드 1픽** — 코드 변경 없음. 현행 스네이크의 기본 동작.
+2. **매치 순서권** — 매치데이 세 경기를 어떤 순서로 뛸지 투표 1위 팀 코치가 정한다.
+   `draft_matches.match_order` + `coach_set_match_order` RPC. 코치 화면의
+   "매치 순서권" 카드는 `ST.draft_order[0]` 이 자기 팀이거나 마스터일 때만 보인다.
+   화살표로 순서를 바꾸고 저장하면 선수 `#경기` 채널의 경기 목록이 그 순서로 나간다.
+   `master_reset` 이 `match_order` 를 `id` 순으로 되돌린다.
+
+**"1위" 라는 표현 자체는 새로 감출 정보가 아니다.** REVEAL 단계가 이미 팀별
+득표 순위(🥇🥈🥉, "드래프트 N번")를 공개하므로, `#우리팀`·순위표에 붙인
+"🥇 투표 1위" 배지(`.pride-badge`)는 같은 정보를 다른 화면에서 다시 보여줄 뿐이다.
+가려야 하는 건 **개인 지명 순번**(요구사항 1)이지 팀의 득표 순위가 아니다.
+
 ## 절대 깨면 안 되는 것
 
 이 프로젝트의 존재 이유에 가까운 제약이라, 디자인 개편 중에도 유지해야 한다.
@@ -117,7 +135,7 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
   `coach_state / coach_pick / coach_undo / coach_wish`,
   `master_set_phase / master_set_reveal_step / master_lock_order / master_publish /
    master_set_score / master_hide_comment / master_reset`,
-  `coach_set_card`,
+  `coach_set_card`, `coach_set_match_order`,
   `submit_vote / submit_pledge / submit_look / submit_prediction / submit_comment /
    vote_tally / standings`
 - 픽 확정은 `draft_config` 행을 잠그는 원자적 트랜잭션 (동시 픽 유실 방지).

@@ -360,6 +360,32 @@ button, input, textarea { font-family: inherit; }
 .pitch-b b { color: var(--tc); font-weight: 800; margin-right: 4px; }
 .pitch-b span { color: var(--muted); font-weight: 600; word-break: break-word; }
 
+/* ── 매치 순서권 (코치) ───────────────────────── */
+.mo-list { display: flex; flex-direction: column; gap: 6px; }
+.mo-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 14px;
+}
+.mo-no {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--aubergine-dark); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+}
+.mo-teams { flex: 1; font-weight: 700; font-size: 14px; }
+.mo-arrows { display: flex; gap: 4px; flex: none; }
+.mo-arrows .btn { padding: 4px 9px; font-size: 11px; }
+
+/* ── 투표 1위 자부심 배지 ─────────────────────── */
+/* 실력과 무관한 비전력 보상 — 투표 1위 팀에게 붙는 명예 배지.
+   REVEAL 단계에서 이미 공개된 정보(🥇 드래프트 1번)라 새로 감출 것이 없다. */
+.pride-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  margin-left: 7px; padding: 3px 9px; border-radius: var(--pill);
+  background: linear-gradient(135deg, #FFD86B, #F2B705);
+  color: #4A3400; font-size: 11.5px; font-weight: 900; vertical-align: middle;
+}
+
 /* ── 팀 선택 ───────────────────────────────── */
 .team-opts { display: flex; flex-direction: column; gap: 11px; }
 .team-opt {
