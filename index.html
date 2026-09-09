@@ -43,7 +43,7 @@
 <script src="assets/character.js"></script>
 <script src="assets/app.js"></script>
 <script>
-const { api, store, snakeTeam, snakeSeq, colorFor, esc, timeAgo, shuffled, confetti } = window.FDApp;
+const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti } = window.FDApp;
 const C = window.FD;
 const { charSvg } = window.FDChar;
 
@@ -659,6 +659,17 @@ function renderDraft(pane) {
       </p>
       ${done ? `<div class="mt"><button class="btn" onclick="go('team')">확정 명단 보기</button></div>` : ''}
     </div>
+
+    ${order ? `<div class="card">
+      <div class="row">
+        <h3 style="margin:0">뽑는 순서</h3>
+        <span class="spacer"></span>
+        <span class="hint">${done ? '모두 끝' : nowTeam ? `지금 <b style="color:${nowTeam.color}">${esc(nowTeam.name)}</b>` : ''}</span>
+      </div>
+      <p class="hint" style="margin:4px 0 12px">한 라운드에 세 팀이 한 명씩 뽑고, 다음 라운드는 방향이 뒤집혀요.
+        칸에는 팀만 표시되고 <b>누가 뽑혔는지는 나오지 않습니다.</b></p>
+      ${snakeTrackHtml(order, cur, S.teams)}
+    </div>` : ''}
 
     ${loungeHtml('선수 대기장')}`;
 }

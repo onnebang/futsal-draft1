@@ -64,7 +64,7 @@
 <script src="assets/character.js"></script>
 <script src="assets/app.js"></script>
 <script>
-const { api, store, snakeTeam, snakeSeq, colorFor, esc } = window.FDApp;
+const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc } = window.FDApp;
 const C = window.FD;
 const { charSvg } = window.FDChar;
 
@@ -148,7 +148,14 @@ function render() {
       ${done ? '' : `<button class="btn ghost small" style="background:#fff" onclick="copyHandoff()">📋 다음 팀 알림 문구 복사</button>`}
     </div>
 
-    ${order ? `<div class="seq-bar">${seqBarHtml(order, cur)}</div>` : ''}
+    ${order ? `<div class="card mt">
+      <div class="row">
+        <h3 style="margin:0">뽑는 순서</h3>
+        <span class="spacer"></span>
+        <span class="hint">${done ? '모두 끝' : `다음 → <b>${esc(teamOf(snakeTeam(order, Math.min(cur + 1, C.TOTAL_PICKS - 1))).name)}</b>`}</span>
+      </div>
+      <div class="mt">${snakeTrackHtml(order, cur, TEAMS)}</div>
+    </div>` : ''}
 
     <div class="board">
       <div class="card">
@@ -210,17 +217,6 @@ function poolCardHtml(p) {
         ${w.kind === 'super' ? '🔥' : ''}${esc(w.coach_name)}</span>`).join('')}</div>` : ''}
     ${pledge ? `<span class="bubble">💬 ${esc(pledge)}</span>` : ''}
   </div>`;
-}
-
-function seqBarHtml(order, cur) {
-  const seq = snakeSeq(order);
-  return seq.map((code, i) => {
-    const t = teamOf(code);
-    const past = i < cur;
-    return `<span class="seq-pill ${i === cur ? 'now' : ''}"
-      style="background:${t.color};${past ? 'opacity:.15' : ''}"
-      title="${i + 1}픽 ${esc(t.name)}">${i + 1}</span>`;
-  }).join('');
 }
 
 function resultCard() {
