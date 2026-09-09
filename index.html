@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 하반기 내부매치 드래프트</title>
 <meta name="description" content="FC풉살 2026 하반기 내부매치 드래프트 — 선호팀 투표부터 팀 발표, 우승 예측까지">
-<link rel="stylesheet" href="assets/style.css?v=f9a1f061">
+<link rel="stylesheet" href="assets/style.css?v=f051ecff">
 </head>
 <body>
 
@@ -39,9 +39,9 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=f9a1f061"></script>
-<script src="assets/character.js?v=f9a1f061"></script>
-<script src="assets/app.js?v=f9a1f061"></script>
+<script src="assets/config.js?v=f051ecff"></script>
+<script src="assets/character.js?v=f051ecff"></script>
+<script src="assets/app.js?v=f051ecff"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti } = window.FDApp;
 const C = window.FD;
@@ -287,95 +287,66 @@ function progressHtml() {
   </div>`;
 }
 
-// 대기장 — 18명이 한 화면에 오밀조밀 모여 선다.
-// 도착한 사람은 색이 있고 튀며, 아직 안 온 사람은 흐린 실루엣.
-// 각오 말풍선은 캐릭터 머리 위에 뜬다. 줄마다 말풍선 레인이 하나 있고,
-// 레인은 왼쪽 반·오른쪽 반 두 자리라 여러 명이 동시에 말해도 절대 겹치지 않는다.
-const COLS = 6;
-let laneSpeaker = {};   // '행-반쪽' → 이름  (예: '1L': '해수')
-let laneHold = {};      // 탭으로 고른 레인은 잠시 자동 순환을 멈춘다
-let laneTick = 0;
-let speakTimer = null;
+// 대기장 — 스포트라이트 + 명단.
+// 각오를 18칸에 욱여넣으면 전부 작아져 아무것도 안 읽힌다. 그래서 읽는 일은
+// 위쪽 큰 카드 하나가 전담하고(3.2초마다 교대), 아래 명단은 "누가 왔나"만 본다.
+// 명단의 누구든 누르면 그 사람이 바로 스포트라이트에 서므로 각오는 한 탭이면 닿는다.
+let spotName = null;   // 지금 스포트라이트에 선 사람
+let spotHold = 0;      // 탭으로 고른 뒤 자동 교대를 잠시 멈추는 시각
+let spotTimer = null;
 
-const laneKey = (i) => `${Math.floor(i / COLS)}${(i % COLS) < COLS / 2 ? 'L' : 'R'}`;
-const talkersIn = (key) => S.players.filter((p, i) => laneKey(i) === key && S.marks.includes(p) && S.pledges[p]);
-const laneKeys = () => [...new Set(S.players.map((_, i) => laneKey(i)))];
+function spotTalkers() { return S.players.filter((p) => S.marks.includes(p) && S.pledges[p]); }
 
-function startSpeakLoop() {
-  if (speakTimer) return;
-  speakTimer = setInterval(() => {
-    const keys = laneKeys();
-    if (!keys.length) return;
-    // 레인을 하나씩 돌아가며 다음 사람으로 넘긴다 — 한 번에 하나만 바뀌어 눈이 편하다
-    const key = keys[laneTick++ % keys.length];
-    if (Date.now() < (laneHold[key] || 0)) return;
-    const t = talkersIn(key);
-    if (!t.length) return;
-    laneSpeaker[key] = t[(t.indexOf(laneSpeaker[key]) + 1) % t.length];
-    paintLanes();
-  }, 2800);
+function startSpotLoop() {
+  if (spotTimer) return;
+  spotTimer = setInterval(() => {
+    if (Date.now() < spotHold) return;
+    const t = spotTalkers();
+    if (t.length < 2) return;
+    spotName = t[(t.indexOf(spotName) + 1) % t.length];
+    paintSpot();
+  }, 3200);
 }
 
 function speak(name) {
-  const key = laneKey(S.players.indexOf(name));
-  laneSpeaker[key] = name;
-  laneHold[key] = Date.now() + 8000;
-  paintLanes();
+  spotName = name;
+  spotHold = Date.now() + 9000;
+  paintSpot();
 }
 
-function bubbleHtml(name) {
-  const i = S.players.indexOf(name);
-  if (i < 0) return '';
-  const col = i % COLS;
-  const half = col < COLS / 2 ? 'L' : 'R';
-  const arrived = S.marks.includes(name);
-  const body = !arrived ? '아직 안 왔어요. 카톡으로 살짝 알려주세요 🙌'
-             : (S.pledges[name] || '도착! 각오는 아직이에요');
-  // 꼬리는 그 사람의 열 가운데를 가리킨다 (반쪽 안에서의 위치)
-  const tail = ((col % (COLS / 2)) + 0.5) / (COLS / 2) * 100;
-  return `<div class="bub ${half}" style="--tail:${tail.toFixed(1)}%">
-    <b>${esc(name)}</b> ${esc(body)}
+function spotHtml() {
+  const n = spotName;
+  if (!n) {
+    return `<div class="spot empty">
+      <p class="hint">아직 각오를 남긴 사람이 없어요.<br>첫 번째가 되어보세요!</p>
+    </div>`;
+  }
+  const arrived = S.marks.includes(n);
+  const body = arrived
+    ? (S.pledges[n] || '도착! 각오는 아직 안 남겼어요')
+    : '아직 안 왔어요 — 카톡으로 살짝 알려주세요 🙌';
+  return `<div class="spot ${arrived ? '' : 'away'}">
+    ${charSvg(n, { size: 84, crop: false, bounce: arrived })}
+    <div class="spot-name">${esc(n)}</div>
+    <div class="spot-say">${esc(body)}</div>
   </div>`;
 }
 
-function laneHtml(row) {
-  return ['L', 'R'].map((h) => {
-    const n = laneSpeaker[`${row}${h}`];
-    return n ? bubbleHtml(n) : '';
-  }).join('');
-}
-
-// 전체 렌더 없이 말풍선과 강조만 갈아끼운다 — 10초마다 오는 재렌더와 무관하게 부드럽다
-function paintLanes() {
-  document.querySelectorAll('.lane').forEach((el) => { el.innerHTML = laneHtml(Number(el.dataset.row)); });
-  const talking = new Set(Object.values(laneSpeaker));
-  document.querySelectorAll('.crowd .cp').forEach((b) => b.classList.toggle('talking', talking.has(b.dataset.name)));
+// 전체 렌더 없이 스포트라이트와 명단 강조만 갈아끼운다 —
+// 10초마다 오는 재렌더와 부딪히지 않고, 캐릭터가 다시 튀지도 않는다
+function paintSpot() {
+  const el = document.getElementById('spot');
+  if (!el) return;
+  el.innerHTML = spotHtml();
+  document.querySelectorAll('.crowd .cp').forEach((b) => b.classList.toggle('talking', b.dataset.name === spotName));
 }
 
 function loungeHtml(title) {
   const here = S.players.filter((p) => S.marks.includes(p));
   const left = S.players.filter((p) => !S.marks.includes(p));
-
-  // 레인마다 첫 화자를 채우고, 사라진 사람(초기화 등)은 비운다
-  laneKeys().forEach((key) => {
-    const t = talkersIn(key);
-    if (!t.includes(laneSpeaker[key])) laneSpeaker[key] = t[0] || null;
-  });
-  startSpeakLoop();
-
-  const rows = [];
-  for (let r = 0; r * COLS < S.players.length; r++) {
-    const cells = S.players.slice(r * COLS, (r + 1) * COLS).map((n) => {
-      const arrived = S.marks.includes(n);
-      const talking = Object.values(laneSpeaker).includes(n);
-      return `<button class="cp ${arrived ? '' : 'away'} ${talking ? 'talking' : ''}"
-                data-name="${esc(n)}" onclick="speak('${esc(n)}')">
-        ${charSvg(n, { size: 32, bounce: arrived })}
-        <span class="nm">${esc(n)}</span>
-      </button>`;
-    }).join('');
-    rows.push(`<div class="lane" data-row="${r}">${laneHtml(r)}</div><div class="cells">${cells}</div>`);
-  }
+  const t = spotTalkers();
+  if (!t.includes(spotName) && Date.now() >= spotHold) spotName = t[0] || null;
+  startSpotLoop();
 
   return `<div class="card">
     <div class="row">
@@ -383,10 +354,23 @@ function loungeHtml(title) {
       <span class="spacer"></span>
       <span class="chip ${left.length ? 'live' : ''}">${here.length} / ${S.players.length}명</span>
     </div>
-    <div class="crowd">${rows.join('')}</div>
+
+    <div class="stage" id="spot">${spotHtml()}</div>
+
+    <div class="crowd">
+      ${S.players.map((n) => {
+        const arrived = S.marks.includes(n);
+        return `<button class="cp ${arrived ? '' : 'away'} ${n === spotName ? 'talking' : ''}"
+                  data-name="${esc(n)}" onclick="speak('${esc(n)}')">
+          ${charSvg(n, { size: 31, bounce: arrived })}
+          <span class="nm">${esc(n)}</span>
+        </button>`;
+      }).join('')}
+    </div>
+
     <p class="hint" style="margin:10px 0 0">${left.length === 0
       ? '전원 도착! 이제 마감과 발표만 남았어요 🎉'
-      : `<b>${left.length}명</b>이 아직이에요 · 캐릭터를 누르면 그 사람이 말해요`}</p>
+      : `<b>${left.length}명</b>이 아직이에요 · 누구든 누르면 위에서 말해요`}</p>
     ${left.length ? `<div class="mt"><button class="btn small ghost" onclick="copyNudge()">카톡에 붙여넣을 문구 복사</button></div>` : ''}
   </div>`;
 }

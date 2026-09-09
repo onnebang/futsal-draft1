@@ -220,45 +220,45 @@ button, input, textarea { font-family: inherit; }
 .look-opts .opt.sel { background: var(--aubergine-dark); border-color: var(--aubergine-dark); color: #fff; }
 
 /* ── 선수 대기장 ───────────────────────────── */
-/* 18명이 한 화면에 들어오도록 캐릭터를 작게, 촘촘하게.
-   줄마다 위에 말풍선 레인이 있고, 레인은 왼쪽 반·오른쪽 반 두 자리 —
-   여러 명이 동시에 말해도 겹치지 않는다. */
-.crowd {
-  padding: 4px 4px 6px; border-radius: var(--radius-sm);
-  background: radial-gradient(ellipse 80% 40% at 50% 100%, rgba(91, 43, 94, .07), transparent 70%);
+/* 읽는 일은 위쪽 스포트라이트가 전담한다 — 각오를 18칸에 나눠 담으면
+   전부 작아져 아무것도 안 읽힌다. 아래 명단은 "누가 왔나"만 본다. */
+.stage {
+  display: flex; justify-content: center; padding: 44px 0 2px; margin-top: 4px;
+  border-radius: var(--radius-sm);
+  background: radial-gradient(ellipse 55% 42% at 50% 82%, rgba(91, 43, 94, .09), transparent 72%);
 }
-.lane { position: relative; height: 54px; }
-.cells { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin-bottom: 4px; }
+.spot { display: flex; flex-direction: column; align-items: center; width: 100%; animation: spotIn .3s cubic-bezier(.34, 1.56, .64, 1); }
+.spot.empty { padding: 18px 10px; text-align: center; }
+.spot-name { margin-top: 3px; font-size: 18px; font-weight: 900; letter-spacing: -.01em; }
+.spot-say {
+  position: relative; margin-top: 9px; max-width: 100%;
+  padding: 10px 15px 11px; border-radius: 16px;
+  background: #fff; border: 2px solid var(--border-strong); box-shadow: var(--shadow);
+  font-size: 15px; font-weight: 600; line-height: 1.45; color: var(--ink); text-align: center;
+  word-break: break-word;
+}
+.spot-say::after {
+  content: ''; position: absolute; left: 50%; top: -8px; margin-left: -7px;
+  border: 7px solid transparent; border-bottom-color: var(--border-strong); border-top: 0;
+}
+.spot.away .spot-name { color: var(--faint); }
+.spot.away .spot-say { color: var(--muted); font-weight: 500; }
+@keyframes spotIn { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.crowd {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px;
+  margin-top: 12px; padding-top: 10px; border-top: 2px solid var(--border);
+}
 .cp {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 3px 0 3px; border: 0; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  padding: 3px 0; border: 0; background: transparent; cursor: pointer;
   border-radius: 12px; transition: background .15s;
 }
-.cp:active { background: rgba(91, 43, 94, .08); }
-.cp .nm { font-size: 10px; font-weight: 700; color: var(--muted); line-height: 1.1; }
-.cp.away { opacity: .32; filter: grayscale(.7); }
-.cp.talking { background: rgba(0, 163, 122, .12); }
+.cp .nm { font-size: 11px; font-weight: 700; color: var(--muted); line-height: 1.1; }
+.cp.away { opacity: .5; filter: grayscale(.55); }
+.cp.talking { background: rgba(0, 163, 122, .13); }
 .cp.talking .nm { color: var(--green); }
-
-/* 말풍선 — 캐릭터 머리 위. 꼬리(--tail)가 말하는 사람의 열을 가리킨다 */
-.bub {
-  position: absolute; bottom: 8px; width: calc(50% - 5px);
-  padding: 6px 8px 7px; border-radius: 12px;
-  background: #fff; border: 1.5px solid var(--border-strong); box-shadow: var(--shadow);
-  font-size: 11px; line-height: 1.35; color: var(--ink); word-break: break-word;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  animation: bubIn .28s cubic-bezier(.34, 1.56, .64, 1);
-}
-.bub.L { left: 2px; }
-.bub.R { right: 2px; }
-.bub b { color: var(--aubergine); font-weight: 800; margin-right: 2px; }
-.bub::after {
-  content: ''; position: absolute; left: var(--tail); bottom: -6px; margin-left: -5px;
-  border: 5px solid transparent; border-top-color: #fff; border-bottom: 0;
-  filter: drop-shadow(0 1.5px 0 var(--border-strong));
-}
-@keyframes bubIn { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
-@media (max-width: 360px) { .cells { grid-template-columns: repeat(6, 1fr); } .cp .nm { font-size: 9px; } }
+.cp:active { background: rgba(91, 43, 94, .1); }
 
 /* 투표 2단계 안에서 컨트롤 묶음을 나누는 작은 제목 */
 .look-group {
