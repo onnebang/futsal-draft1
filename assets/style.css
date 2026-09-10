@@ -173,6 +173,14 @@ button, input, textarea { font-family: inherit; }
 .btn.small { padding: 9px 16px; font-size: 14px; box-shadow: 0 3px 0 rgba(0, 122, 90, .25); }
 .btn.tiny { padding: 7px 13px; font-size: 12.5px; box-shadow: 0 2px 0 rgba(0, 122, 90, .25); flex: none; }
 
+/* ── 모의드래프트 팀 선택 칩 ── */
+.mock-pick {
+  width: 30px; height: 30px; flex: none; border-radius: 50%;
+  border: 1.5px solid var(--border-strong); background: #fff;
+  font-size: 11px; font-weight: 800; color: var(--muted); cursor: pointer; transition: .1s;
+}
+.mock-pick.sel { background: var(--tc); border-color: var(--tc); color: #fff; }
+
 /* ── 카톡 인앱 브라우저 탈출 배너 ── */
 .kakao-exit {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;

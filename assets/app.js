@@ -169,6 +169,34 @@
       .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
   }
 
+  // 모의드래프트 데모용 예시 참가자 3명 — RESULT 이전엔 demo.rosters 가 비어 있어
+  // 실제와 마찬가지로 전원 0점으로 보인다.
+  demo.mockDrafts = [
+    { name: '민지', assignments: { 가은: 'A', 나영: 'A', 수연: 'A', 지혜: 'A', 해수: 'A', 호원: 'A', 화인: 'A',
+      다이: 'B', 서윤: 'B', 선민: 'B', 송희: 'A', 인선: 'B', 혜린: 'B', 혜진: 'B', 효린: 'B',
+      민지: 'C', 승민: 'C', 영은: 'C', 은재: 'C', 이지: 'C', 주원: 'A', 혜선: 'C', 혜은: 'A' } },
+    { name: '선민', assignments: { 가은: 'A', 나영: 'A', 수연: 'A', 지혜: 'A', 해수: 'A', 호원: 'A', 화인: 'A',
+      다이: 'B', 서윤: 'B', 선민: 'B', 송희: 'A', 인선: 'A', 혜린: 'B', 혜진: 'A', 효린: 'A',
+      민지: 'C', 승민: 'C', 영은: 'A', 은재: 'A', 이지: 'A', 주원: 'A', 혜선: 'C', 혜은: 'A' } },
+    { name: '호원', assignments: { 가은: 'A', 나영: 'B', 수연: 'B', 지혜: 'B', 해수: 'B', 호원: 'A', 화인: 'A',
+      다이: 'A', 서윤: 'A', 선민: 'A', 송희: 'A', 인선: 'A', 혜린: 'B', 혜진: 'B', 효린: 'B',
+      민지: 'A', 승민: 'A', 영은: 'A', 은재: 'A', 이지: 'A', 주원: 'A', 혜선: 'C', 혜은: 'C' } },
+  ];
+  // "민지" 로 로그인해서 미리보면 "내 예측 vs 실제" 비교표까지 볼 수 있다.
+  demo.myMockDraft = demo.mockDrafts[0].assignments;
+
+  function demoMockLeaderboard() {
+    const answer = {};
+    demo.rosters.forEach((r) => r.members.forEach((n) => { answer[n] = r.team; }));
+    return demo.mockDrafts
+      .map((m) => ({
+        name: m.name,
+        correct: Object.entries(m.assignments).filter(([n, t]) => answer[n] === t).length,
+        total: demo.players.length,
+      }))
+      .sort((a, b) => b.correct - a.correct);
+  }
+
   if (DEMO && demoPhase !== 'VOTE') {
     demo.config.draft_order = demoTally()
       .sort((a, b) => b.score - a.score || b.first - a.first)
@@ -282,6 +310,24 @@
         return { ok: true };
       }
       return rpc('submit_prediction', { p_name: name, p_r1: r1, p_r2: r2, p_r3: r3, p_nick: nick });
+    },
+
+    // 모의드래프트 — 비공개로 진행되는 실제 드래프트를 구경만 해야 하는 선수들을 위한
+    // 참여형 미니게임. 팀 "배정"만 맞히는 거라 개인 지명 순번은 여기서도 절대 다루지 않는다.
+    async myMockDraft(name) {
+      if (DEMO) return demo.myMockDraft || null;
+      const rows = await rest('draft_mock_drafts?select=assignments&player_name=eq.' + encodeURIComponent(name));
+      return rows[0]?.assignments || null;
+    },
+
+    async submitMockDraft(name, assignments) {
+      if (DEMO) { demo.myMockDraft = assignments; return { ok: true }; }
+      return rpc('submit_mock_draft', { p_name: name, p_assignments: assignments });
+    },
+
+    async mockDraftLeaderboard() {
+      if (DEMO) return demoMockLeaderboard();
+      return rpc('mock_draft_leaderboard', {});
     },
 
     async comments() {

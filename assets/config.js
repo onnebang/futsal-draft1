@@ -27,7 +27,7 @@ window.FD = {
     NOT_YOUR_TURN: '지금은 우리 팀 차례가 아니에요.',
     ALREADY_PICKED: '이미 다른 팀이 지명한 선수예요.',
     DRAFT_DONE: '드래프트가 이미 끝났습니다.',
-    DRAFT_INCOMPLETE: '아직 18픽이 모두 끝나지 않았어요.',
+    DRAFT_INCOMPLETE: '아직 전체 드래프트가 끝나지 않았어요.',
     NOTHING_TO_UNDO: '취소할 픽이 없습니다.',
     NOT_YOUR_PICK: '직전 픽을 한 코치 본인만 취소할 수 있어요.',
     INVALID_PASSCODE: '암호가 올바르지 않습니다.',
@@ -42,6 +42,8 @@ window.FD = {
     BAD_LOOK: '캐릭터 설정을 저장하지 못했어요. 다시 시도해주세요.',
     COMMENTS_CLOSED: '아직 응원 채널이 열리지 않았어요.',
     VOTE_IN_PROGRESS: '투표가 끝나야 결과를 볼 수 있어요.',
+    MOCK_DRAFT_CLOSED: '지금은 모의드래프트를 할 수 없어요.',
+    BAD_MOCK_DRAFT: '전원을 팀에 배정해야 제출할 수 있어요.',
   },
 
   // 총 23명(참석 19 + 불참 4) 을 끊지 않고 한 번에 스네이크로 드래프트한다 —

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 하반기 내부매치 드래프트</title>
 <meta name="description" content="FC풉살 2026 하반기 내부매치 드래프트 — 선호팀 투표부터 팀 발표, 우승 예측까지">
-<link rel="stylesheet" href="assets/style.css?v=0919c1f5">
+<link rel="stylesheet" href="assets/style.css?v=7c34703f">
 </head>
 <body>
 
@@ -40,9 +40,9 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=0919c1f5"></script>
-<script src="assets/character.js?v=0919c1f5"></script>
-<script src="assets/app.js?v=0919c1f5"></script>
+<script src="assets/config.js?v=7c34703f"></script>
+<script src="assets/character.js?v=7c34703f"></script>
+<script src="assets/app.js?v=7c34703f"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
         LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop, isTyping, kakaoExitBannerHtml } = window.FDApp;
@@ -54,6 +54,7 @@ const CHANNELS = [
   { id: 'avatar',  name: '내캐릭터',  min: 1, desc: '나를 닮은 선수를 직접 꾸며보세요 — 코치 화면에도 그대로 나옵니다' },
   { id: 'reveal',  name: '결과발표',  min: 2, desc: '투표 결과로 정해진 드래프트 지명 순서' },
   { id: 'draft',   name: '드래프트',  min: 3, desc: '코치들이 팀을 고르는 중 — 진행 상황만 공개돼요' },
+  { id: 'mock',    name: '모의드래프트', min: 2, desc: '비공개 드래프트, 심심하니까 여러분도 팀을 맞혀보세요' },
   { id: 'team',    name: '우리팀',    min: 4, desc: '확정된 3팀 명단 (가나다순)' },
   { id: 'predict', name: '예측',      min: 5, desc: '우승 팀을 예측하고 승률을 확인하세요' },
   { id: 'cheer',   name: '응원',      min: 4, desc: '팀별 응원 한마디' },
@@ -63,7 +64,7 @@ const CHANNELS = [
 let S = {
   cfg: null, teams: [], players: [], marks: [], pledges: {}, looks: {}, coachCards: [],
   rosters: [], tally: null, comments: [], predictions: [], predictMarks: [],
-  matches: [], standings: [],
+  matches: [], standings: [], myMock: null, mockLeaderboard: [],
   active: null, cheerTeam: 'A', celebrated: false,
 };
 
@@ -84,6 +85,8 @@ async function load() {
 
   const pi = phaseIdx(S.cfg.phase);
   if (pi >= 2) { try { S.tally = await api.voteTally(); } catch { S.tally = null; } }
+  if (pi >= 2 && myName()) { try { S.myMock = await api.myMockDraft(myName()); } catch { S.myMock = null; } }
+  if (pi >= 4) { try { S.mockLeaderboard = await api.mockDraftLeaderboard(); } catch { S.mockLeaderboard = []; } }
   if (pi >= 4) { try { S.rosters = await api.rosters(); } catch { S.rosters = []; } }
   if (pi >= 4) { try { S.comments = await api.comments(); } catch { S.comments = []; } }
   if (pi >= 5) {
@@ -135,7 +138,7 @@ function render() {
       <p class="hint mt">드래프트 준비 중이에요. 카톡 공지를 기다려주세요 🙏</p></div>`;
     return;
   }
-  ({ vote: renderVote, avatar: renderAvatar, reveal: renderReveal, draft: renderDraft,
+  ({ vote: renderVote, avatar: renderAvatar, reveal: renderReveal, draft: renderDraft, mock: renderMock,
      team: renderTeam, predict: renderPredict, cheer: renderCheer, match: renderMatch }[ch.id])(pane);
   syncStickyTop();   // topbar 높이를 재서 고정 미리보기가 겹치지 않게 한다
 }
@@ -697,6 +700,148 @@ function renderDraft(pane) {
     </div>` : ''}
 
     ${loungeHtml('선수 대기장')}`;
+}
+
+// ── #모의드래프트 ──────────────────────────────────────
+// 실제 드래프트는 코치만 보는 비공개 진행이라, 기다리는 선수들이 심심하지 않게
+// 대신 팀 배정을 맞혀보는 미니게임. 순번이 아니라 "어느 팀이냐"만 묻고 맞힌다 —
+// 개인 지명 순번을 다루는 원칙(요구사항 1)은 여기서도 그대로 지킨다.
+let mockName = null;   // 아직 store 에 저장하지 않은, 모의드래프트용으로 고른 이름
+let mockDraft = null;  // 편집 중인 배정 { 선수이름: 팀코드 }
+
+function pickMockName(n) { mockName = n; mockDraft = null; renderMock(document.getElementById('pane')); }
+
+function setMockPick(p, code) {
+  if (!mockDraft) mockDraft = { ...(S.myMock || {}) };
+  mockDraft[p] = mockDraft[p] === code ? null : code;
+  document.getElementById('mockOk')?.classList.add('hidden');
+  renderMock(document.getElementById('pane'));
+}
+
+function randomMock() {
+  if (!mockDraft) mockDraft = {};
+  const codes = S.teams.map((t) => t.code);
+  S.players.forEach((p) => { mockDraft[p] = codes[Math.floor(Math.random() * codes.length)]; });
+  renderMock(document.getElementById('pane'));
+}
+
+async function submitMock() {
+  const name = mockName || myName();
+  if (!name || S.players.some((p) => !mockDraft[p])) return;
+  const btn = document.getElementById('mockBtn');
+  const err = document.getElementById('mockErr');
+  err?.classList.add('hidden');
+  if (btn) btn.disabled = true;
+  try {
+    await api.submitMockDraft(name, mockDraft);
+    store.set('name', name);
+    mockName = null;
+    S.myMock = { ...mockDraft };
+    document.getElementById('mockOk')?.classList.remove('hidden');
+  } catch (e) {
+    if (err) { err.textContent = e.message; err.classList.remove('hidden'); }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function mockRowHtml(p) {
+  const cur = mockDraft?.[p];
+  return `<div class="row" style="padding:8px 0;border-bottom:1px solid var(--border-soft);align-items:center;gap:6px">
+    <span class="chr-wrap">${charSvg(p, { size: 32 })}</span>
+    <b style="flex:1;min-width:0;font-size:14.5px">${esc(p)}</b>
+    ${S.teams.map((t) => `<button class="mock-pick ${cur === t.code ? 'sel' : ''}"
+      style="--tc:${t.color}" onclick="setMockPick('${esc(p)}','${t.code}')">${esc(t.code)}</button>`).join('')}
+  </div>`;
+}
+
+function renderMock(pane) {
+  const name = mockName || myName();
+
+  if (!name) {
+    pane.innerHTML = `<div class="card">
+      <h3>먼저 내 이름을 알려주세요</h3>
+      <p class="hint" style="margin:4px 0 14px">이름을 골라야 모의드래프트에 참여할 수 있어요.</p>
+      <div class="grid-players">
+        ${S.players.map((p) => `<div class="pcard" onclick="pickMockName('${esc(p)}')">
+          <span class="chr-wrap">${charSvg(p, { size: 44 })}</span>${esc(p)}</div>`).join('')}
+      </div>
+    </div>`;
+    return;
+  }
+
+  const pi = phaseIdx(S.cfg.phase);
+  if (pi >= 4) { renderMockResult(pane, name); return; }
+
+  const open = pi === 2 || pi === 3;
+  if (!mockDraft) mockDraft = { ...(S.myMock || {}) };
+  const filled = S.players.filter((p) => mockDraft[p]).length;
+  const total = S.players.length;
+  const done = filled === total;
+
+  pane.innerHTML = `
+    <div class="card">
+      <h3>모의드래프트 🎮</h3>
+      <p class="hint mt">드래프트는 코치들끼리 비공개로 진행 중이에요. 기다리는 동안 어느 팀에 갈지 맞혀보세요 —
+        결과가 공개되면 실제 명단과 비교해 순위를 보여드릴게요.</p>
+      ${!open ? '<p class="hint mt">지금은 참여할 수 없어요.</p>' : `
+      <div class="row mt" style="align-items:center">
+        <span class="hint">배정 완료</span><span class="spacer"></span><b>${filled}/${total}명</b>
+      </div>
+      <div class="progress mt"><i style="width:${Math.round((filled / total) * 100)}%"></i></div>
+      <div class="row mt" style="gap:8px;flex-wrap:wrap">
+        <button class="btn small" id="mockBtn" ${done ? '' : 'disabled'} onclick="submitMock()">
+          ${S.myMock ? '다시 저장하기' : '제출하기'}</button>
+        <button class="btn small ghost" onclick="randomMock()">🎲 랜덤으로 채우기</button>
+      </div>
+      <span class="ok mt hidden" id="mockOk">저장했어요 ✓</span>
+      <div class="err mt hidden" id="mockErr"></div>`}
+    </div>
+    ${open ? `<div class="card mt">${S.players.map((p) => mockRowHtml(p)).join('')}</div>` : ''}`;
+}
+
+function renderMockResult(pane, name) {
+  const board = S.mockLeaderboard || [];
+  const myRank = board.findIndex((r) => r.name === name);
+  const mine = myRank >= 0 ? board[myRank] : null;
+
+  pane.innerHTML = `
+    <div class="card center">
+      <h3>모의드래프트 결과 🎮</h3>
+      <p class="hint mt">실제 명단과 비교해 몇 명을 맞혔는지 순위를 매겼어요.</p>
+      ${mine
+        ? `<p class="mt" style="font-size:30px;font-weight:900">${mine.correct}<span style="font-size:16px;color:var(--muted)">/${mine.total}</span>
+           <span style="font-size:15px;font-weight:700;color:var(--muted)"> · ${myRank + 1}위</span></p>`
+        : '<p class="hint mt">참여하지 않으셨네요 — 다음 드래프트 때 도전해보세요!</p>'}
+    </div>
+    <div class="card mt">
+      <h3>전체 순위</h3>
+      ${board.length === 0 ? '<p class="hint mt">아직 아무도 참여하지 않았어요.</p>' : `
+      <div class="mt">${board.map((r, i) => `<div class="row" style="padding:7px 0">
+        <span style="width:26px">${i + 1}.</span>
+        <b style="${r.name === name ? 'color:var(--green)' : ''}">${esc(r.name)}</b><span class="spacer"></span>
+        <span>${r.correct}/${r.total}</span>
+      </div>`).join('')}</div>`}
+    </div>
+    ${mine ? mockDetailHtml() : ''}`;
+}
+
+function mockDetailHtml() {
+  if (!S.myMock) return '';
+  const answer = {};
+  S.rosters.forEach((r) => r.members.forEach((p) => { answer[p] = r.team; }));
+  return `<div class="card mt">
+    <h3>내 예측 vs 실제</h3>
+    <div class="mt">${S.players.map((p) => {
+      const guess = S.myMock[p], real = answer[p], hit = guess === real;
+      return `<div class="row" style="padding:5px 0">
+        <span style="flex:1">${esc(p)}</span>
+        <span class="hint" style="width:26px;text-align:center">${guess || '-'}</span>
+        <span style="width:20px;text-align:center">${hit ? '✅' : '❌'}</span>
+        <span style="width:26px;text-align:center;font-weight:700">${real || '-'}</span>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
 }
 
 function msgHtml(name, body, tag, time, useChar) {
