@@ -169,6 +169,36 @@
       .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
   }
 
+  // 모의드래프트 데모용 예시 참가자 3명(전원 완주) — 코치 픽처럼 한 명씩 쌓인
+  // 픽 목록이라 { participant: [{ seq, team, player_name }] } 형태다.
+  // RESULT 이전엔 demo.rosters 가 비어 있어 실제와 마찬가지로 전원 0점으로 보인다.
+  const assignmentsToPicks = (a) => Object.entries(a).map(([player_name, team], seq) => ({ seq, team, player_name }));
+  demo.mockPicks = {
+    민지: assignmentsToPicks({ 가은: 'A', 나영: 'A', 수연: 'A', 지혜: 'A', 해수: 'A', 호원: 'A', 화인: 'A',
+      다이: 'B', 서윤: 'B', 선민: 'B', 송희: 'A', 인선: 'B', 혜린: 'B', 혜진: 'B', 효린: 'B',
+      민지: 'C', 승민: 'C', 영은: 'C', 은재: 'C', 이지: 'C', 주원: 'A', 혜선: 'C', 혜은: 'A' }),
+    선민: assignmentsToPicks({ 가은: 'A', 나영: 'A', 수연: 'A', 지혜: 'A', 해수: 'A', 호원: 'A', 화인: 'A',
+      다이: 'B', 서윤: 'B', 선민: 'B', 송희: 'A', 인선: 'A', 혜린: 'B', 혜진: 'A', 효린: 'A',
+      민지: 'C', 승민: 'C', 영은: 'A', 은재: 'A', 이지: 'A', 주원: 'A', 혜선: 'C', 혜은: 'A' }),
+    호원: assignmentsToPicks({ 가은: 'A', 나영: 'B', 수연: 'B', 지혜: 'B', 해수: 'B', 호원: 'A', 화인: 'A',
+      다이: 'A', 서윤: 'A', 선민: 'A', 송희: 'A', 인선: 'A', 혜린: 'B', 혜진: 'B', 효린: 'B',
+      민지: 'A', 승민: 'A', 영은: 'A', 은재: 'A', 이지: 'A', 주원: 'A', 혜선: 'C', 혜은: 'C' }),
+  };
+  // "민지" 로 로그인해서 미리보면 완주한 내 픽 목록(내 예측 vs 실제)까지 볼 수 있다.
+
+  function demoMockLeaderboard() {
+    const answer = {};
+    demo.rosters.forEach((r) => r.members.forEach((n) => { answer[n] = r.team; }));
+    return Object.entries(demo.mockPicks)
+      .filter(([, picks]) => picks.length === demo.players.length)
+      .map(([name, picks]) => ({
+        name,
+        correct: picks.filter((p) => answer[p.player_name] === p.team).length,
+        total: demo.players.length,
+      }))
+      .sort((a, b) => b.correct - a.correct);
+  }
+
   if (DEMO && demoPhase !== 'VOTE') {
     demo.config.draft_order = demoTally()
       .sort((a, b) => b.score - a.score || b.first - a.first)
@@ -282,6 +312,52 @@
         return { ok: true };
       }
       return rpc('submit_prediction', { p_name: name, p_r1: r1, p_r2: r2, p_r3: r3, p_nick: nick });
+    },
+
+    // 모의드래프트 — 비공개로 진행되는 실제 드래프트를 구경만 해야 하는 선수들을 위한
+    // 참여형 미니게임. 코치 픽(draft_picks)과 완전히 대칭되는 구조로, 한 명 뽑을
+    // 때마다 바로 DB에 저장된다 — 새로고침해도, 다른 기기로 들어와도 이어서 할 수 있다.
+    // 팀 "배정"만 맞히는 거라 개인 지명 순번은 여기서도 절대 다루지 않는다(채점만
+    // draft_rosters 와 대조할 뿐, 순번 자체는 화면 어디에도 노출하지 않는다).
+    async myMockPicks(name) {
+      if (DEMO) return (demo.mockPicks[name] || []).slice();
+      return rest('draft_mock_picks?select=seq,team,player_name&participant=eq.'
+        + encodeURIComponent(name) + '&order=seq');
+    },
+
+    async mockPick(name, player) {
+      if (DEMO) {
+        if (!demo.mockPicks[name]) demo.mockPicks[name] = [];
+        const picks = demo.mockPicks[name];
+        if (picks.length >= demo.players.length) { const e = new Error(C.ERROR_MESSAGE.DRAFT_DONE); e.code = 'DRAFT_DONE'; throw e; }
+        if (picks.some((p) => p.player_name === player)) { const e = new Error(C.ERROR_MESSAGE.ALREADY_PICKED); e.code = 'ALREADY_PICKED'; throw e; }
+        const order = demo.config.draft_order || ['A', 'B', 'C'];
+        const seq = picks.length;
+        const team = snakeTeam(order, seq);
+        picks.push({ seq, team, player_name: player });
+        return { ok: true, seq, team };
+      }
+      return rpc('mock_pick', { p_participant: name, p_player: player });
+    },
+
+    async mockUndo(name) {
+      if (DEMO) {
+        const picks = demo.mockPicks[name];
+        if (!picks || !picks.length) { const e = new Error(C.ERROR_MESSAGE.NOTHING_TO_UNDO); e.code = 'NOTHING_TO_UNDO'; throw e; }
+        picks.pop();
+        return { ok: true };
+      }
+      return rpc('mock_undo', { p_participant: name });
+    },
+
+    async mockReset(name) {
+      if (DEMO) { demo.mockPicks[name] = []; return { ok: true }; }
+      return rpc('mock_reset', { p_participant: name });
+    },
+
+    async mockDraftLeaderboard() {
+      if (DEMO) return demoMockLeaderboard();
+      return rpc('mock_draft_leaderboard', {});
     },
 
     async comments() {
