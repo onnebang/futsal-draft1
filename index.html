@@ -73,6 +73,10 @@ const teamOf = (code) => S.teams.find((t) => t.code === code) || { name: code, c
 const myName = () => store.get('name');
 
 async function load() {
+  // 폴링 중 단계가 바뀌었는지 감지하려고, 덮어쓰기 전에 이전 값을 챙겨둔다.
+  const prevPhase = S.cfg?.phase;
+  const prevRevealStep = S.cfg?.reveal_step;
+
   S.cfg = await api.config();
   const [teams, players, marks, pledges, looks, coachCards] = await Promise.all([
     api.teams(), api.players(), api.voteMarks(), api.pledges(),
@@ -95,14 +99,41 @@ async function load() {
     try { S.matches = await api.matches(); S.standings = await api.standings(); } catch { /* 무시 */ }
   }
 
+  // 새 단계가 열릴 때마다 그 단계에 맞는 채널이 화면 맨 앞(활성 채널)으로 나와야
+  // 한다 — 들어와 있던 채널에 그대로 머물면 마감·발표·결과공개가 떠도 못 보고
+  // 지나칠 수 있다. 처음 들어왔을 때(S.active 없음)뿐 아니라, 폴링 중에 단계가
+  // 바뀐 순간에도 옮겨준다. 모의드래프트는 REVEAL 발표가 끝나야 열리는(3순위까지
+  // 공개된) 별도 시점이라 phase 만으론 못 잡아서 reveal_step 변화도 따로 본다.
+  const phaseChanged = prevPhase != null && prevPhase !== S.cfg.phase;
+  const mockJustUnlocked = S.cfg.phase === 'REVEAL' && prevRevealStep != null
+    && prevRevealStep < 3 && (S.cfg.reveal_step || 0) >= 3;
+
   if (!S.active) S.active = defaultChannel();
+  else if (phaseChanged) S.active = defaultChannel();
+  else if (mockJustUnlocked) S.active = 'mock';
+
   render();
 }
 
+// 단계별로 "지금 가장 중요한" 채널(들) — 메뉴 맨 앞으로 끌어오고, 그중 첫
+// 번째가 기본 활성 채널이 된다. 드래프트 단계엔 #드래프트·#모의드래프트가
+// 나란히 진행 중이라 둘 다 앞으로 뺀다 — 모바일 상단 탭은 가로 스크롤이라
+// 뒤에 있으면 사람들이 존재 자체를 못 보고 지나친다.
+const PHASE_CHANNELS = {
+  1: ['vote'], 2: ['reveal'], 3: ['draft', 'mock'],
+  4: ['team', 'cheer'], 5: ['predict'], 6: ['match'],
+};
+
 function defaultChannel() {
-  const pi = phaseIdx(S.cfg.phase);
-  const map = { 1: 'vote', 2: 'reveal', 3: 'draft', 4: 'team', 5: 'predict', 6: 'match' };
-  return map[pi] || 'vote';
+  return (PHASE_CHANNELS[phaseIdx(S.cfg.phase)] || ['vote'])[0];
+}
+
+// 사이드바·모바일 상단 탭에 그릴 채널 순서 — 지금 단계의 채널(들)을 맨
+// 앞으로, 나머지는 원래 순서 그대로 뒤에 붙인다.
+function menuChannels() {
+  const primary = PHASE_CHANNELS[phaseIdx(S.cfg.phase)] || [];
+  const rest = CHANNELS.filter((c) => !primary.includes(c.id));
+  return primary.map((id) => CHANNELS.find((c) => c.id === id)).concat(rest);
 }
 
 function unlocked(ch) { return phaseIdx(S.cfg.phase) >= ch.min; }
@@ -113,7 +144,7 @@ function render() {
   document.getElementById('sbPhase').textContent = label;
   document.getElementById('tbPhase').textContent = '· ' + label;
 
-  const navHtml = CHANNELS.map((ch) => {
+  const navHtml = menuChannels().map((ch) => {
     const open = unlocked(ch);
     const active = S.active === ch.id;
     const live = open && ch.id === defaultChannel();
