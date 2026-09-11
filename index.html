@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FC풉살 하반기 내부매치 드래프트</title>
 <meta name="description" content="FC풉살 2026 하반기 내부매치 드래프트 — 선호팀 투표부터 팀 발표, 우승 예측까지">
-<link rel="stylesheet" href="assets/style.css?v=84b62f3e">
+<link rel="stylesheet" href="assets/style.css?v=5e5db07b">
 </head>
 <body>
 
@@ -40,9 +40,9 @@
   </main>
 </div>
 
-<script src="assets/config.js?v=84b62f3e"></script>
-<script src="assets/character.js?v=84b62f3e"></script>
-<script src="assets/app.js?v=84b62f3e"></script>
+<script src="assets/config.js?v=5e5db07b"></script>
+<script src="assets/character.js?v=5e5db07b"></script>
+<script src="assets/app.js?v=5e5db07b"></script>
 <script>
 const { api, store, snakeTeam, snakeSeq, snakeTrackHtml, colorFor, esc, timeAgo, shuffled, confetti,
         LOOK_GROUPS, lookRowHtml, clampNum, syncStickyTop, isTyping, kakaoExitBannerHtml } = window.FDApp;
@@ -64,7 +64,7 @@ const CHANNELS = [
 let S = {
   cfg: null, teams: [], players: [], marks: [], pledges: {}, looks: {}, coachCards: [],
   rosters: [], tally: null, comments: [], predictions: [], predictMarks: [],
-  matches: [], standings: [], myMock: null, mockLeaderboard: [],
+  matches: [], standings: [], mockLeaderboard: [],
   active: null, cheerTeam: 'A', celebrated: false,
 };
 
@@ -85,7 +85,6 @@ async function load() {
 
   const pi = phaseIdx(S.cfg.phase);
   if (pi >= 2) { try { S.tally = await api.voteTally(); } catch { S.tally = null; } }
-  if (pi >= 2 && myName()) { try { S.myMock = await api.myMockDraft(myName()); } catch { S.myMock = null; } }
   if (pi >= 4) { try { S.mockLeaderboard = await api.mockDraftLeaderboard(); } catch { S.mockLeaderboard = []; } }
   if (pi >= 4) { try { S.rosters = await api.rosters(); } catch { S.rosters = []; } }
   if (pi >= 4) { try { S.comments = await api.comments(); } catch { S.comments = []; } }
@@ -707,51 +706,72 @@ function renderDraft(pane) {
 // 코치들이 지금 쓰고 있는 것과 똑같은 화면(선수 풀 · 팀 차례 · 스네이크 트랙 ·
 // 팀 현황 · 픽 로그)으로 직접 팀을 대신 뽑아보는 미니게임. 실제와 같은
 // 지명 순서(draft_order)를 그대로 써서 "지금 차례"가 실제와 같은 방식으로
-// 돌게 하되, 여기서도 "몇 번째로 뽑혔는지"는 채점에만 쓰고 화면엔 순번을
-// 절대 노출하지 않는다 — 원칙 1은 그대로 지킨다. 결과는 최종 팀 배정
-// ({ 이름: 팀코드 } 한 장)으로만 서버에 저장하고, 서버 검증도 이 최종 배정
-// 전체가 채워졌는지만 본다(assets/app.js의 submit_mock_draft 참고).
-// 한 명이 3팀을 전부 대신 뽑는 1인 시뮬레이션이라 "내 차례" 개념은 없다.
+// 돌게 한다. 코치 픽(draft_picks)과 완전히 대칭 구조로 **한 명 뽑을 때마다
+// 바로 DB에 저장**된다 — 새로고침해도, 다른 기기로 들어와도 이어서 할 수
+// 있다. 화면에서 순번대로 고르는 건 UX일 뿐, 서버는 이 순번을 채점에만
+// 쓰고("몇 번째로 뽑혔는지") 화면 어디에도 다시 노출하지 않는다 — 원칙 1은
+// 그대로 지킨다. 한 명이 3팀을 전부 대신 뽑는 1인 시뮬레이션이라 "내 차례"
+// 개념은 없다.
 let mockName = null;   // 아직 store 에 저장하지 않은, 모의드래프트용으로 고른 이름
-let mockPicks = null;  // 진행 중인 픽 목록 [{ seq, team, player }]
+let mockPicks = null;  // 서버와 동기화된 내 픽 목록 [{ seq, team, player }] — null 이면 아직 안 불러옴
+let mockBusy = false;  // 픽/취소/다시하기 요청이 오가는 동안 중복 탭 방지
+
+function mockShowErr(msg) {
+  const el = document.getElementById('mockErr');
+  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+}
 
 function pickMockName(n) { mockName = n; mockPicks = null; renderMock(document.getElementById('pane')); }
-function mockRedo() { mockPicks = []; renderMock(document.getElementById('pane')); }
 
-function mockPickPlayer(p) {
-  if (!mockPicks) mockPicks = [];
-  const order = S.cfg.draft_order;
-  const seq = mockPicks.length;
-  if (!order || seq >= S.players.length || mockPicks.some((x) => x.player === p)) return;
-  mockPicks.push({ seq, team: snakeTeam(order, seq), player: p });
-  renderMock(document.getElementById('pane'));
-}
-
-function mockUndo() {
-  if (!mockPicks || !mockPicks.length) return;
-  mockPicks.pop();
-  renderMock(document.getElementById('pane'));
-}
-
-async function submitMock() {
+async function mockPickPlayer(p) {
   const name = mockName || myName();
-  if (!name || !mockPicks || mockPicks.length < S.players.length) return;
-  const assignments = {};
-  mockPicks.forEach((p) => { assignments[p.player] = p.team; });
-  const btn = document.getElementById('mockBtn');
-  const err = document.getElementById('mockErr');
-  err?.classList.add('hidden');
-  if (btn) btn.disabled = true;
+  const order = S.cfg.draft_order;
+  if (!name || mockBusy || !mockPicks || !order) return;
+  if (mockPicks.length >= S.players.length || mockPicks.some((x) => x.player === p)) return;
+  mockBusy = true;
+  document.getElementById('mockErr')?.classList.add('hidden');
   try {
-    await api.submitMockDraft(name, assignments);
-    store.set('name', name);
-    mockName = null;
-    S.myMock = assignments;
-    document.getElementById('mockOk')?.classList.remove('hidden');
+    const res = await api.mockPick(name, p);
+    mockPicks.push({ seq: res.seq, team: res.team, player: p });
+    // 첫 픽이 성공한 시점에만 전역 신원을 확정한다 — 고르기만 하고 못 뽑았다면 안 묶인다
+    if (mockName) { store.set('name', mockName); mockName = null; }
   } catch (e) {
-    if (err) { err.textContent = e.message; err.classList.remove('hidden'); }
+    mockShowErr(e.message);
   } finally {
-    if (btn) btn.disabled = false;
+    mockBusy = false;
+    renderMock(document.getElementById('pane'));
+  }
+}
+
+async function mockUndo() {
+  const name = mockName || myName();
+  if (!name || mockBusy || !mockPicks || !mockPicks.length) return;
+  mockBusy = true;
+  document.getElementById('mockErr')?.classList.add('hidden');
+  try {
+    await api.mockUndo(name);
+    mockPicks.pop();
+  } catch (e) {
+    mockShowErr(e.message);
+  } finally {
+    mockBusy = false;
+    renderMock(document.getElementById('pane'));
+  }
+}
+
+async function mockRedo() {
+  const name = mockName || myName();
+  if (!name || mockBusy) return;
+  mockBusy = true;
+  document.getElementById('mockErr')?.classList.add('hidden');
+  try {
+    await api.mockReset(name);
+    mockPicks = [];
+  } catch (e) {
+    mockShowErr(e.message);
+  } finally {
+    mockBusy = false;
+    renderMock(document.getElementById('pane'));
   }
 }
 
@@ -766,7 +786,7 @@ function mockPoolCardHtml(p) {
   </div>`;
 }
 
-function renderMock(pane) {
+async function renderMock(pane) {
   const name = mockName || myName();
 
   if (!name) {
@@ -779,6 +799,16 @@ function renderMock(pane) {
       </div>
     </div>`;
     return;
+  }
+
+  // 서버에 이미 저장된 내 픽을 불러온다 — 새로고침·다른 기기에서도 이어서 하게 된다.
+  if (mockPicks === null) {
+    pane.innerHTML = `<div class="card"><p class="hint">불러오는 중…</p></div>`;
+    try {
+      const rows = await api.myMockPicks(name);
+      mockPicks = rows.map((r) => ({ seq: r.seq, team: r.team, player: r.player_name }));
+    } catch { mockPicks = []; }
+    if (S.active !== 'mock') return; // 그새 다른 채널로 넘어갔으면 그리지 않는다
   }
 
   const pi = phaseIdx(S.cfg.phase);
@@ -797,17 +827,6 @@ function renderMock(pane) {
     return;
   }
 
-  if (S.myMock && !mockPicks) {
-    pane.innerHTML = `<div class="card center">
-      <h3>모의드래프트 🎮</h3>
-      <h3 class="mt">이미 제출했어요 ✓</h3>
-      <p class="hint mt">생각이 바뀌었다면 처음부터 다시 골라서 새로 제출할 수 있어요.</p>
-      <div class="mt"><button class="btn small" onclick="mockRedo()">🔄 다시 하기</button></div>
-    </div>`;
-    return;
-  }
-
-  if (!mockPicks) mockPicks = [];
   const drafted = mockPicks.map((p) => p.player);
   const pool = S.players.filter((p) => !drafted.includes(p));
   const cur = mockPicks.length;
@@ -823,12 +842,14 @@ function renderMock(pane) {
         <div style="font-size:13px;opacity:.9;margin-top:2px">${cur} / ${total}명${done ? '' : ` · ${round}라운드`}</div>
       </div>
       <span class="spacer"></span>
-      ${mockPicks.length ? `<button class="btn ghost small" style="background:#fff" onclick="mockUndo()">방금 픽 취소</button>` : ''}
+      ${mockPicks.length ? `<button class="btn ghost small" style="background:#fff" ${mockBusy ? 'disabled' : ''} onclick="mockUndo()">방금 픽 취소</button>` : ''}
     </div>
+    <div class="err mt hidden" id="mockErr"></div>
 
     <div class="card mt">
       <p class="hint" style="margin:4px 0 12px">코치들이 지금 쓰고 있는 화면과 똑같아요. 지금 차례인 팀이
-        되었다고 생각하고 한 명씩 뽑아보세요 — 실제와 같은 순서로 라운드마다 방향이 뒤집혀요.</p>
+        되었다고 생각하고 한 명씩 뽑아보세요 — 실제와 같은 순서로 라운드마다 방향이 뒤집혀요.
+        고른 순간 바로 저장되니 나중에 이어서 해도 돼요.</p>
       ${snakeTrackHtml(order, cur, S.teams)}
     </div>
 
@@ -874,14 +895,9 @@ function renderMock(pane) {
     </div>
 
     ${done ? `<div class="card mt center">
-      <h3>제출할까요?</h3>
-      <p class="hint mt">결과가 공개되면 실제 명단과 비교해 순위를 보여드릴게요.</p>
-      <div class="row mt" style="justify-content:center;gap:8px">
-        <button class="btn" id="mockBtn" onclick="submitMock()">제출하기</button>
-        <button class="btn ghost" onclick="mockRedo()">처음부터 다시</button>
-      </div>
-      <span class="ok mt hidden" id="mockOk">저장했어요 ✓</span>
-      <div class="err mt hidden" id="mockErr"></div>
+      <h3>다 뽑았어요 ✓</h3>
+      <p class="hint mt">이미 저장됐어요. 결과가 공개되면 실제 명단과 비교해 순위를 보여드릴게요.</p>
+      <div class="mt"><button class="btn ghost small" ${mockBusy ? 'disabled' : ''} onclick="mockRedo()">처음부터 다시</button></div>
     </div>` : ''}`;
 }
 
@@ -897,11 +913,11 @@ function renderMockResult(pane, name) {
       ${mine
         ? `<p class="mt" style="font-size:30px;font-weight:900">${mine.correct}<span style="font-size:16px;color:var(--muted)">/${mine.total}</span>
            <span style="font-size:15px;font-weight:700;color:var(--muted)"> · ${myRank + 1}위</span></p>`
-        : '<p class="hint mt">참여하지 않으셨네요 — 다음 드래프트 때 도전해보세요!</p>'}
+        : '<p class="hint mt">완주하지 못하셨네요 — 다음 드래프트 때 도전해보세요!</p>'}
     </div>
     <div class="card mt">
       <h3>전체 순위</h3>
-      ${board.length === 0 ? '<p class="hint mt">아직 아무도 참여하지 않았어요.</p>' : `
+      ${board.length === 0 ? '<p class="hint mt">완주한 사람이 아직 없어요.</p>' : `
       <div class="mt">${board.map((r, i) => `<div class="row" style="padding:7px 0">
         <span style="width:26px">${i + 1}.</span>
         <b style="${r.name === name ? 'color:var(--green)' : ''}">${esc(r.name)}</b><span class="spacer"></span>
@@ -912,13 +928,14 @@ function renderMockResult(pane, name) {
 }
 
 function mockDetailHtml() {
-  if (!S.myMock) return '';
+  if (!mockPicks || !mockPicks.length) return '';
   const answer = {};
   S.rosters.forEach((r) => r.members.forEach((p) => { answer[p] = r.team; }));
   return `<div class="card mt">
     <h3>내 예측 vs 실제</h3>
     <div class="mt">${S.players.map((p) => {
-      const guess = S.myMock[p], real = answer[p], hit = guess === real;
+      const guess = mockPicks.find((x) => x.player === p)?.team;
+      const real = answer[p], hit = guess === real;
       return `<div class="row" style="padding:5px 0">
         <span style="flex:1">${esc(p)}</span>
         <span class="hint" style="width:26px;text-align:center">${guess || '-'}</span>

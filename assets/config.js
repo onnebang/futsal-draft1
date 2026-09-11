@@ -43,7 +43,6 @@ window.FD = {
     COMMENTS_CLOSED: '아직 응원 채널이 열리지 않았어요.',
     VOTE_IN_PROGRESS: '투표가 끝나야 결과를 볼 수 있어요.',
     MOCK_DRAFT_CLOSED: '지금은 모의드래프트를 할 수 없어요.',
-    BAD_MOCK_DRAFT: '전원을 팀에 배정해야 제출할 수 있어요.',
   },
 
   // 총 23명(참석 19 + 불참 4) 을 끊지 않고 한 번에 스네이크로 드래프트한다 —
