@@ -718,6 +718,15 @@ function renderDraft(pane) {
       ${done ? `<div class="mt"><button class="btn" onclick="go('team')">확정 명단 보기</button></div>` : ''}
     </div>
 
+    ${done ? '' : `<div class="card">
+      <div class="row">
+        <h3 style="margin:0">🎮 심심하면, 모의드래프트</h3>
+      </div>
+      <p class="hint" style="margin:4px 0 12px">코치들과 똑같은 순서로 여러분도 직접 3팀을 뽑아보세요.
+        명단이 공개되면 얼마나 맞혔는지 순위도 나와요.</p>
+      <button class="btn block" onclick="go('mock')">모의드래프트 진행하기</button>
+    </div>`}
+
     ${order ? `<div class="card">
       <div class="row">
         <h3 style="margin:0">뽑는 순서</h3>
