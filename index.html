@@ -115,10 +115,25 @@ async function load() {
   render();
 }
 
+// 단계별로 "지금 가장 중요한" 채널(들) — 메뉴 맨 앞으로 끌어오고, 그중 첫
+// 번째가 기본 활성 채널이 된다. 드래프트 단계엔 #드래프트·#모의드래프트가
+// 나란히 진행 중이라 둘 다 앞으로 뺀다 — 모바일 상단 탭은 가로 스크롤이라
+// 뒤에 있으면 사람들이 존재 자체를 못 보고 지나친다.
+const PHASE_CHANNELS = {
+  1: ['vote'], 2: ['reveal'], 3: ['draft', 'mock'],
+  4: ['team', 'cheer'], 5: ['predict'], 6: ['match'],
+};
+
 function defaultChannel() {
-  const pi = phaseIdx(S.cfg.phase);
-  const map = { 1: 'vote', 2: 'reveal', 3: 'draft', 4: 'team', 5: 'predict', 6: 'match' };
-  return map[pi] || 'vote';
+  return (PHASE_CHANNELS[phaseIdx(S.cfg.phase)] || ['vote'])[0];
+}
+
+// 사이드바·모바일 상단 탭에 그릴 채널 순서 — 지금 단계의 채널(들)을 맨
+// 앞으로, 나머지는 원래 순서 그대로 뒤에 붙인다.
+function menuChannels() {
+  const primary = PHASE_CHANNELS[phaseIdx(S.cfg.phase)] || [];
+  const rest = CHANNELS.filter((c) => !primary.includes(c.id));
+  return primary.map((id) => CHANNELS.find((c) => c.id === id)).concat(rest);
 }
 
 function unlocked(ch) { return phaseIdx(S.cfg.phase) >= ch.min; }
@@ -129,7 +144,7 @@ function render() {
   document.getElementById('sbPhase').textContent = label;
   document.getElementById('tbPhase').textContent = '· ' + label;
 
-  const navHtml = CHANNELS.map((ch) => {
+  const navHtml = menuChannels().map((ch) => {
     const open = unlocked(ch);
     const active = S.active === ch.id;
     const live = open && ch.id === defaultChannel();
