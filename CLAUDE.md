@@ -264,6 +264,15 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
   Supabase 로그(`edge_logs`)의 `response.headers.proxy_status`에서
   `PostgREST; error=<SQLSTATE>` 형태로 진짜 원인이 남으므로, 다음에 비슷한
   "이유 없이 저장이 안 돼요" 신고가 오면 여기부터 확인할 것.
+  ⚠️ **WHERE 없는 `delete from table;` 을 함수 안에 쓰지 말 것.** 같은 날
+  `master_publish`의 `delete from draft_rosters;`(WHERE 없음)가 마스터의
+  "결과 공개하기"를 계속 막은 두 번째 사고가 있었다 — Supabase 로그
+  (`postgres_logs`)에 `"DELETE requires a WHERE clause"`가 정확히 그 요청
+  타이밍에 찍혀 있었다(직접 SQL로 재현은 안 됐다 — MCP 실행 경로는 이 제약을
+  우회하는 듯하다. `master_reset`에도 같은 패턴의 무조건 `delete from` 이
+  10군데 더 있어서 같이 손봤다). 조치는 전부 `delete from table where true;`
+  로 바꾸는 것 — 지우는 대상은 완전히 같고 문법만 WHERE 절을 갖춘다. 앞으로
+  전체 삭제가 필요한 함수를 새로 짤 때도 `where true`를 붙일 것.
 - 모든 쓰기는 `SECURITY DEFINER` 함수 경유. 코치 기능은 8자리 암호로 게이트.
   `coach_state / coach_pick / coach_undo / coach_wish`,
   `master_set_phase / master_set_reveal_step / master_lock_order / master_publish /
