@@ -217,6 +217,14 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
 맨 앞으로 온다. `defaultChannel()`과 값이 어긋나면 안 되므로 새 채널을 추가할 땐
 `PHASE_CHANNELS` 하나만 고치면 된다(따로 두 곳을 맞출 필요 없음).
 
+`PREDICT` 단계는 `['team', 'predict', 'cheer']`로 셋을 같이 앞세운다 — `#예측`만
+앞세우면 방금 공개된 `#우리팀` 결과가 메뉴 뒤로 밀려서, 예측 단계가 열려도 결과
+확인이 여전히 메인이어야 한다는 요청으로 바꿨다. 순서도 의미가 있다 —
+`defaultChannel()`이 첫 번째 값을 쓰므로 `RESULT→PREDICT` 전환 때도 자동 이동은
+여전히 `#우리팀`으로 향하고(결과가 갑자기 안 보이던 화면에서 예측으로 튕기지
+않는다), 메뉴에는 우리팀 → 예측 → 응원이 나란히 붙어 "명단 확인 → 예측 →
+응원"으로 자연스럽게 이어지도록 한다.
+
 ## 절대 깨면 안 되는 것
 
 이 프로젝트의 존재 이유에 가까운 제약이라, 디자인 개편 중에도 유지해야 한다.
@@ -253,6 +261,26 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
   선수 풀에 "🚫 불참" 라벨을 붙여 누가 못 오는지 참고하게 돕는 것뿐이다. `assets/config.js`의
   `TOTAL_PICKS`(=전체 인원수)도 여기서 나온다 — 팀 수로 안 나눠떨어지면 스네이크
   마지막 라운드가 부분적으로만 찬다(`snakeTrackHtml`가 넘치는 칸을 스스로 잘라낸다).
+  ⚠️ **인원수(`TOTAL_PICKS`)를 바꾸면 `draft_picks_seq_check` 체크 제약도 같이
+  바꿔야 한다** — `check (seq >= 0 and seq <= TOTAL_PICKS - 1)` 형태로 DB에 걸려
+  있는데, 18명이던 예전 시즌 값(`seq <= 17`)이 23명으로 늘어난 뒤에도 안 바뀐 채
+  남아있었다. 그 결과 19번째 픽(`seq = 18`)부터 전부 `error=23514`(체크 제약
+  위반)로 조용히 막혀서, 실전 드래프트가 18/23에서 한 시간 넘게 멈추는 사고가
+  실제로 있었다(2026-09-12, `apply_migration`으로 `seq <= 22`로 즉시 수정).
+  클라이언트 에러 메시지 매핑(`ERROR_MESSAGE`)엔 없는 코드라 "문제가 생겼어요"
+  라는 의미 없는 문구만 뜨고 원인을 알 수 없었다 — 이런 종류의 실패는
+  Supabase 로그(`edge_logs`)의 `response.headers.proxy_status`에서
+  `PostgREST; error=<SQLSTATE>` 형태로 진짜 원인이 남으므로, 다음에 비슷한
+  "이유 없이 저장이 안 돼요" 신고가 오면 여기부터 확인할 것.
+  ⚠️ **WHERE 없는 `delete from table;` 을 함수 안에 쓰지 말 것.** 같은 날
+  `master_publish`의 `delete from draft_rosters;`(WHERE 없음)가 마스터의
+  "결과 공개하기"를 계속 막은 두 번째 사고가 있었다 — Supabase 로그
+  (`postgres_logs`)에 `"DELETE requires a WHERE clause"`가 정확히 그 요청
+  타이밍에 찍혀 있었다(직접 SQL로 재현은 안 됐다 — MCP 실행 경로는 이 제약을
+  우회하는 듯하다. `master_reset`에도 같은 패턴의 무조건 `delete from` 이
+  10군데 더 있어서 같이 손봤다). 조치는 전부 `delete from table where true;`
+  로 바꾸는 것 — 지우는 대상은 완전히 같고 문법만 WHERE 절을 갖춘다. 앞으로
+  전체 삭제가 필요한 함수를 새로 짤 때도 `where true`를 붙일 것.
 - 모든 쓰기는 `SECURITY DEFINER` 함수 경유. 코치 기능은 8자리 암호로 게이트.
   `coach_state / coach_pick / coach_undo / coach_wish`,
   `master_set_phase / master_set_reveal_step / master_lock_order / master_publish /
