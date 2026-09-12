@@ -253,6 +253,17 @@ admin.html?demo=1&phase=VOTE      마스터 콘솔 (암호 아무거나)
   선수 풀에 "🚫 불참" 라벨을 붙여 누가 못 오는지 참고하게 돕는 것뿐이다. `assets/config.js`의
   `TOTAL_PICKS`(=전체 인원수)도 여기서 나온다 — 팀 수로 안 나눠떨어지면 스네이크
   마지막 라운드가 부분적으로만 찬다(`snakeTrackHtml`가 넘치는 칸을 스스로 잘라낸다).
+  ⚠️ **인원수(`TOTAL_PICKS`)를 바꾸면 `draft_picks_seq_check` 체크 제약도 같이
+  바꿔야 한다** — `check (seq >= 0 and seq <= TOTAL_PICKS - 1)` 형태로 DB에 걸려
+  있는데, 18명이던 예전 시즌 값(`seq <= 17`)이 23명으로 늘어난 뒤에도 안 바뀐 채
+  남아있었다. 그 결과 19번째 픽(`seq = 18`)부터 전부 `error=23514`(체크 제약
+  위반)로 조용히 막혀서, 실전 드래프트가 18/23에서 한 시간 넘게 멈추는 사고가
+  실제로 있었다(2026-09-12, `apply_migration`으로 `seq <= 22`로 즉시 수정).
+  클라이언트 에러 메시지 매핑(`ERROR_MESSAGE`)엔 없는 코드라 "문제가 생겼어요"
+  라는 의미 없는 문구만 뜨고 원인을 알 수 없었다 — 이런 종류의 실패는
+  Supabase 로그(`edge_logs`)의 `response.headers.proxy_status`에서
+  `PostgREST; error=<SQLSTATE>` 형태로 진짜 원인이 남으므로, 다음에 비슷한
+  "이유 없이 저장이 안 돼요" 신고가 오면 여기부터 확인할 것.
 - 모든 쓰기는 `SECURITY DEFINER` 함수 경유. 코치 기능은 8자리 암호로 게이트.
   `coach_state / coach_pick / coach_undo / coach_wish`,
   `master_set_phase / master_set_reveal_step / master_lock_order / master_publish /
