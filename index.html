@@ -121,7 +121,7 @@ async function load() {
 // 뒤에 있으면 사람들이 존재 자체를 못 보고 지나친다.
 const PHASE_CHANNELS = {
   1: ['vote'], 2: ['reveal'], 3: ['draft', 'mock'],
-  4: ['team', 'cheer'], 5: ['predict'], 6: ['match'],
+  4: ['team', 'cheer'], 5: ['team', 'predict', 'cheer'], 6: ['match'],
 };
 
 function defaultChannel() {
